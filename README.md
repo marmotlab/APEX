@@ -3,7 +3,7 @@ Skill Imitation on Articulated Robots </h1>
 
 <div align="center">
 
-[[Website]](https://marmotlab.github.io/kakashi/)
+[[Website]](https://marmotlab.github.io/APEX/)
 <!-- [[Video]](https://www.youtube.com/watch?v=f6GKpPCyOGY) -->
 
 
