@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description"
+        content="APEX: Action Priors Enable Efficient Exploration for Skill Imitation on Articulated Robots">
+  <meta name="keywords" content="APEX, Imitation Learning, Action Priors, Legged Robots">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>APEX: Action Priors Enable Efficient Exploration for Skill Imitation on Articulated Robots</title>
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYVRSFMDRL"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+
+    gtag('js', new Date());
+
+    gtag('config', 'G-PYVRSFMDRL');
+  </script>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+        rel="stylesheet">
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="icon" href="./static/images/dog-png-30.png">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/index.js"></script>
+</head>
+<body>
+
+<section class="hero" style="position: relative; min-height: 60vh; overflow: hidden; margin-bottom: 0;">
+  <!-- Hero links on top (desktop only) -->
+  <div class="hero-head is-hidden-mobile" style="position: absolute; top: 0; left: 0; width: 100%; z-index: 3;">
+    <header class="navbar">
+      <div class="container is-size-5">
+        <div class="navbar-menu">
+          <div class="navbar-end">
+            <a class="navbar-item pl-4 pr-4" href="https://arxiv.org/pdf/2505.10022">
+              <span class="icon" style="margin-right:5px;">
+                <img src="./static/images/pdf.svg" alt="PDF">
+              </span>
+              <span style="color: rgb(255, 255, 255);">Paper</span>
+            </a>
+            <a class="navbar-item pl-4 pr-4" href="https://arxiv.org/abs/2505.10022">
+              <span class="icon" style="margin-right:5px;">
+                <img src="./static/images/arxiv-logomark-small.svg" alt="ArXiv">
+              </span>
+              <span style="color:rgb(255, 255, 255); ">arXiv</span>
+            </a>
+            <a href="https://www.youtube.com/watch?v=f6GKpPCyOGY" class="navbar-item pl-4 pr-4">
+              <span class="icon" style="margin-right:5px;">
+                <img src="./static/images/youtube.svg" alt="YouTube">
+              </span>
+              <span style="color: #ffffff;">Video</span>
+            </a>
+            <!-- <a href="https://github.com/marmotlab" class="navbar-item pl-4 pr-4">
+              <span class="icon" style="margin-right:5px;">
+                <img src="./static/images/github.svg" alt="GitHub">
+              </span>
+              <span>Code</span>
+            </a> -->
+          </div>
+        </div>
+      </div>
+    </header>
+  </div>
+  <!-- Background video -->
+  <video autoplay loop muted playsinline
+  style=" position: relative; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; background: #000; opacity: 0.85; z-index: 2; pointer-events: none;">
+    <source src="./static/videos/decap canter.mp4" type="video/mp4">
+  </video>
+  <!-- Centered text on top of video -->
+  <div class="hero-body" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; display: flex; align-items: center; justify-content: center;">
+    <div class="container has-text-centered">
+      <h1 class="title is-1 publication-title is-size-1-mobile" style="font-size: 6rem; color: #1a1a1a;">
+        APEX
+      </h1>
+      <h1 class="subtitle is-1 publication-title is-size-4-mobile" style="font-size: 4rem; color: #1a1a1a; ">
+        Action Priors Enable Efficient Exploration for Skill Imitation on Articulated Robots
+      </h1>
+    </div>
+  </div>
+</section>
+
+
+
+<nav class="navbar" role="navigation" aria-label="main navigation">
+  <div class="navbar-brand">
+    <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </a>
+  </div>
+  <div class="navbar-menu">
+    <div class="navbar-start" style="flex-grow: 1; justify-content: center;">
+      <!-- <a class="navbar-item" href="https://keunhong.com">
+      <span class="icon">
+          <i class="fas fa-home"></i>
+      </span> -->
+      </a>
+
+      <div class="navbar-item has-dropdown is-hoverable">
+        <a class="navbar-link">
+          More Research
+        </a>
+        <div class="navbar-dropdown">
+          <a class="navbar-item" href="https://arxiv.org/abs/2310.05714">
+            DecAP
+          </a>
+          <!-- <a class="navbar-item" href="https://nerfies.github.io">
+            Nerfies
+          </a>
+          <a class="navbar-item" href="https://latentfusion.github.io">
+            LatentFusion
+          </a>
+          <a class="navbar-item" href="https://photoshape.github.io">
+            PhotoShape
+          </a> -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title">APEX: Action Priors Enable Efficient Exploration for Skill Imitation on Articulated Robots</h1>
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+              <a href="https://shivam-sood00.github.io/">Shivam Sood</a><sup>1</sup>,</span>
+            <span class="author-block">
+              <a href="https://laukik29.github.io/">Laukik B Nakhwa</a><sup>1</sup>,</span>
+            <span class="author-block">
+              <a href="https://www.yuhongcao.online/">Yuhong Cao</a><sup>1</sup>,
+            </span>
+            <span class="author-block">
+              <a href="https://www.linkedin.com/in/gesun607/">Sun Ge</a><sup>1</sup>,
+            </span>
+            <span class="author-block">
+              <a href="https://www.marmotlab.org/bio.html">Guillaume Sartoretti</a><sup>1</sup>,
+            </span>
+          </div>
+
+          <div class="is-size-5 publication-authors">
+            <span class="author-block"><sup>1</sup>National University of Singapore</span>
+            <!-- <span class="author-block"><sup>2</sup>Google Research</span> -->
+          </div>
+
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <!-- PDF Link. -->
+              <span class="link-block">
+                <a href="https://arxiv.org/pdf/2505.10022"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fas fa-file-pdf"></i>
+                  </span>
+                  <span>Paper</span>
+                </a>
+              </span>
+              <span class="link-block">
+                <a href="https://arxiv.org/abs/2505.10022"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="ai ai-arxiv"></i>
+                  </span>
+                  <span>arXiv</span>
+                </a>
+              </span>
+              <!-- Video Link. -->
+              <span class="link-block">
+                <a href="https://www.youtube.com/watch?v=f6GKpPCyOGY"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-youtube"></i>
+                  </span>
+                  <span>Video</span>
+                </a>
+              </span>
+              <!-- Code Link. -->
+              <span class="link-block">
+                <a href="https://github.com/marmotlab"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="fab fa-github"></i>
+                  </span>
+                  <span>Code (Coming Soon)</span>
+                  </a>
+              </span>
+              <!-- Dataset Link. -->
+              <!-- <span class="link-block">
+                <a href="https://github.com/google/nerfies/releases/tag/0.1"
+                   class="external-link button is-normal is-rounded is-dark">
+                  <span class="icon">
+                      <i class="far fa-images"></i>
+                  </span> -->
+                  <!-- <span>Data</span> -->
+                  </a>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Paper Video  -->
+<!-- <section class="section">
+      <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        
+        <h2 class="title is-3">Accompanying Video</h2>
+        <div class="publication-video">
+          <iframe width="1392" height="783" src="https://www.youtube.com/embed/f6GKpPCyOGY" title="APEX: Action Priors Enable Efficient Exploration" 
+          frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</section> -->
+
+<section class="section">
+  <div class="container">
+    <h2 class="title is-3 has-text-centered mb-6">Learning Diverse Animal Like Skills</h2>
+    <div class="columns is-variable is-6">
+      <!-- Left Column: Gait Transitions -->
+      <div class="column">
+        <div class="box" style="max-width: 100%; margin: 0 auto;">
+          <h3 class="subtitle is-4 has-text-centered mb-3">Gait transitions with a single policy</h3>
+          <div class="has-text-centered">
+            <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
+              <source src="./static/videos/gait_change_apex.mp4" type="video/mp4">
+            </video>
+          </div>
+        </div>
+      </div>
+      <!-- Right Column: Highest Speed -->
+      <div class="column">
+        <div class="box mb-6" style="max-width: 100%; margin: 0 auto;">
+          <h3 class="subtitle is-4 has-text-centered mb-3">Highest recorded speed: <span style="font-weight: bold; color: #21a366;">3.39 m/s</span></h3>
+          <div class="has-text-centered">
+            <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
+              <source src="./static/videos/decap canter.mp4" type="video/mp4">
+            </video>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+<!-- Generalization to Stairs and Slopes -->
+<h2 class="title is-3 has-text-centered mb-6">Imitation Beyond Data</h2>
+<div class="box mb-6" style="margin-top: 2rem;">
+  <p class="has-text-centered mb-4">
+    APEX's exploration mechanism enables policies to generalize to uneven terrains from kinematic flat-ground data without deviating from the intended gait styles.
+  </p>
+  <div class="columns is-centered is-variable is-4">
+    <div class="column has-text-centered">
+      <div class="card" style="box-shadow: 0 2px 8px rgba(33,163,102,0.10);">
+        <div class="card-image" style="padding-bottom: 0;">
+          <figure class="image" style="margin-bottom: 0;">
+            <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+              <source src="./static/videos/stairs_apex.mp4" type="video/mp4">
+            </video>
+          </figure>
+        </div>
+        <div class="card-content has-text-centered" style="padding: 0.5rem 0 0.5rem 0;">
+          <p class="subtitle is-6" style="margin-bottom: 0;">Trot on Stairs</p>
+        </div>
+      </div>
+    </div>
+    <div class="column has-text-centered">
+      <div class="card" style="box-shadow: 0 2px 8px rgba(33,163,102,0.10);">
+        <div class="card-image" style="padding-bottom: 0;">
+          <figure class="image" style="margin-bottom: 0;">
+            <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+              <source src="./static/videos/slope_apex_1.mp4" type="video/mp4">
+            </video>
+          </figure>
+        </div>
+        <div class="card-content has-text-centered" style="padding: 0.5rem 0 0.5rem 0;">
+          <p class="subtitle is-6" style="margin-bottom: 0;">Canter on Slope(1)</p>
+        </div>
+      </div>
+    </div>
+    <div class="column has-text-centered">
+      <div class="card" style="box-shadow: 0 2px 8px rgba(33,163,102,0.10);">
+        <div class="card-image" style="padding-bottom: 0;">
+          <figure class="image" style="margin-bottom: 0;">
+            <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+              <source src="./static/videos/slope_apex_2.mp4" type="video/mp4">
+            </video>
+          </figure>
+        </div>
+        <div class="card-content has-text-centered" style="padding: 0.5rem 0 0.5rem 0;">
+          <p class="subtitle is-6" style="margin-bottom: 0;">Canter on Slope(2)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Extension to Humanoids -->
+<div class="box mb-6" style="max-width: 700px; margin: 2rem auto;">
+  <h2 class="title is-4 has-text-centered mb-3">Extension to Humanoids</h2>
+  <div class="has-text-centered">
+    <video autoplay loop muted playsinline controls style="width: 70%; border-radius: 12px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
+      <source src="./static/videos/humanoid_apex.mp4" type="video/mp4">
+    </video>
+  </div>
+</div>
+
+<!-- Robustness Tests -->
+<div class="box mb-6" style="max-width: 900px; margin: 2rem auto;">
+  <h2 class="title is-4 has-text-centered mb-3">Robustness Tests on Rough Terrain</h2>
+  <div class="columns is-centered">
+    <div class="column has-text-centered">
+      <div class="card">
+        <div class="card-image">
+          <figure class="image">
+            <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+              <source src="./static/videos/rough_apex_1.mp4" type="video/mp4">
+            </video>
+          </figure>
+        </div>
+        <div class="card-content has-text-centered">
+          <p class="subtitle is-6">Trot from a very happy dog</p>
+        </div>
+      </div>
+    </div>
+    <div class="column has-text-centered">
+      <div class="card">
+        <div class="card-image">
+          <figure class="image">
+            <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+              <source src="./static/videos/rough_apex_2.mp4" type="video/mp4">
+            </video>
+          </figure>
+        </div>
+        <div class="card-content has-text-centered">
+          <p class="subtitle is-6">Pace</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h2 class="title is-3 has-text-centered mb-6">Real-World Skill Comparison</h2>
+
+    <!-- Pace Comparison -->
+    <div class="box mb-6">
+      <h4 class="title is-4 has-text-centered">Pace</h4>
+      <div class="columns">
+        <div class="column has-text-centered">
+          <p class="subtitle is-6">Reference</p>
+          <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+            <source src="./static/videos/pace_reference.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered">
+          <p class="subtitle is-6"><span style="color: #21a366; font-weight: bold;">APEX</span></p>
+          <video autoplay loop muted playsinline controls style="width: 100%; transform: scaleX(-1); border-radius: 12px;">
+            <source src="./static/videos/pace_apex.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered">
+          <p class="subtitle is-6"><span style="color: #e53935; font-weight: bold;">AMP</span></p>
+          <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+            <source src="./static/videos/pace_amp.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trot Comparison -->
+    <div class="box mb-6">
+      <h4 class="title is-4 has-text-centered">Trot</h4>
+      <div class="columns">
+        <div class="column has-text-centered">
+          <p class="subtitle is-6">Reference</p>
+          <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+            <source src="./static/videos/trot_reference.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered">
+          <p class="subtitle is-6"><span style="color: #21a366; font-weight: bold;">APEX</span></p>
+          <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+            <source src="./static/videos/trot_apex.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered">
+          <p class="subtitle is-6"><span style="color: #e53935; font-weight: bold;">AMP</span></p>
+          <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+            <source src="./static/videos/trot_amp.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canter Comparison -->
+    <div class="box mb-6">
+      <h4 class="title is-4 has-text-centered">Canter</h4>
+      <div class="columns">
+        <div class="column has-text-centered">
+          <p class="subtitle is-6">Reference</p>
+          <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+            <source src="./static/videos/canter_reference.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered">
+          <p class="subtitle is-6"><span style="color: #21a366; font-weight: bold;">APEX</span></p>
+          <video autoplay loop muted playsinline controls style="width: 100%; transform: scaleX(-1); border-radius: 12px;">
+            <source src="./static/videos/canter_apex.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered">
+          <p class="subtitle is-6"><span style="color: #e53935; font-weight: bold;">AMP</span></p>
+          <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+            <source src="./static/videos/canter_amp.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pronk Comparison -->
+    <div class="box mb-6">
+      <h4 class="title is-4 has-text-centered">Pronk</h4>
+      <div class="columns">
+        <div class="column has-text-centered">
+          <p class="subtitle is-6">Reference</p>
+          <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+            <source src="./static/videos/pronk_reference.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered">
+          <p class="subtitle is-6"><span style="color: #21a366; font-weight: bold;">APEX</span></p>
+          <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+            <source src="./static/videos/pronk_apex.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered">
+          <p class="subtitle is-6"><span style="color: #e53935; font-weight: bold;">AMP</span></p>
+          <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 12px;">
+            <source src="./static/videos/pronk_amp.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <h2 class="title is-3 has-text-centered mb-6">Sim-to-Sim Skill Comparison</h2>
+
+
+    <!-- Pace -->
+    <div class="box mb-6">
+      <h4 class="title is-4 has-text-centered">Pace</h4>
+      <div class="columns">
+        <div class="column has-text-centered">
+          <p class="subtitle is-6"><span style="color: #21a366; font-weight: bold;">APEX</span></p>
+          <video autoplay loop muted playsinline controls style="width: 80%; border-radius: 12px;">
+            <source src="./static/videos/pace_sim2sim_apex.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered">
+          <p class="subtitle is-6"><span style="color: #e53935; font-weight: bold;">AMP</span></p>
+          <video autoplay loop muted playsinline controls style="width: 80%; border-radius: 12px;">
+            <source src="./static/videos/pace_sim2sim_amp.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pronk -->
+    <div class="box mb-6">
+      <h4 class="title is-4 has-text-centered">Pronk</h4>
+      <div class="columns">
+        <div class="column has-text-centered">
+          <p class="subtitle is-6"><span style="color: #21a366; font-weight: bold;">APEX</span></p>
+          <video autoplay loop muted playsinline controls style="width: 80%; border-radius: 12px;">
+            <source src="./static/videos/pronk_sim2sim_apex.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="column has-text-centered">
+          <p class="subtitle is-6"><span style="color: #e53935; font-weight: bold;">AMP</span></p>
+          <video autoplay loop muted playsinline controls style="width: 80%; border-radius: 12px;">
+            <source src="./static/videos/pronk_sim2sim_amp.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <!-- Abstract. -->
+    <div class="columns is-centered has-text-centered">
+      <!-- <div class="column is-four-fifths"> -->
+        <div class="content has-text-justified">
+        <h2 class="title is-3">Abstract</h2>
+        <!-- <div class="content has-text-justified"> -->
+          <p>
+            Learning by imitation provides an effective way for robots to develop
+            well-regulated complex behaviors and directly benefit from natural demonstrations. State-of-the-art imitation learning (IL) approaches typically leverage Adversarial Motion Priors (AMP), which, despite their impressive results, suffer from
+            two key limitations. They are prone to mode collapse, which often leads to overfitting to the simulation environment and thus increased sim-to-real gap, and they
+            struggle to learn diverse behaviors effectively. </p> 
+            
+          <p>
+            To overcome these limitations, we introduce APEX (Action Priors enable Efficient Exploration): a simple yet versatile imitation learning framework that integrates demonstrations directly into reinforcement learning (RL), maintaining high exploration while grounding behavior
+            with expert-informed priors. We achieve this through a combination of decaying
+            action priors, which initially bias exploration toward expert demonstrations but
+            gradually allow the policy to explore independently. This is complemented by a
+            multi-critic RL framework that effectively balances stylistic consistency with task
+            performance. 
+           </p> 
+           <p>
+            Our approach achieves sample-efficient imitation learning and enables the acquisition of diverse skills within a single policy. APEX generalizes to
+            varying velocities and preserves reference-like styles across complex tasks such as
+            navigating rough terrain and climbing stairs, utilizing only flat-terrain kinematic
+            motion data as a prior. We validate our framework through extensive hardware
+            experiments on the Unitree Go2 quadruped. There, APEX yields diverse and agile locomotion gaits, inherent gait transitions, and the highest reported speed for
+            the platform to the best of our knowledge (∼ 4.5m/s in sim-to-sim transfer, and
+            a peak velocity of ∼ 3.3m/s on hardware). Our results establish APEX as a compelling alternative to existing IL methods, offering better efficiency, adaptability,
+            and real-world performance
+          </p>
+        </div>
+      </div>
+    </div>
+    <!--/ Abstract. -->
+</section>
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <!-- Method Section -->
+    <div class="columns is-centered has-text-centered">
+      <!-- <div class="column is-four-fifths"> -->
+        <div class="content has-text-justified">
+        <h2 class="title is-3">Method</h2>
+          <div class="has-text-centered" style="margin-top: 2rem;">
+            <img src="./static/images/Imitation Data.png" alt="APEX Method Overview">
+            <p class="is-size-6 mt-2" style="color: #555;">
+              Figure: Overview of APEX. Only components along dashed lines are required during deployment.
+            </p>
+          </div>
+
+          <p>
+            APEX uses expert-informed action priors to guide early-stage exploration, which decay over time, allowing the policy to gradually explore independently. This is complemented by a multi-critic reinforcement learning setup that balances stylistic imitation with task performance. The process involves four key stages:
+          </p>
+          <ol style="margin-left: 1.5em;">
+            <li>
+              <strong>Imitation Data Collection:</strong> Demonstrations can be collected from a privileged teacher policy, motion capture recordings, or other sources such as animation. Only kinematicjoint data is required.
+            </li>
+            <li>
+              <strong>Action Priors:</strong> Feed-forward torques are derived from the collected kinematic joint data and added to the action space to bias policy exploration. These priors are decayed over time to allow the policy to explore independently.
+            </li>
+            <li>
+              <strong>Multi-Critic Reinforcement Learning:</strong> A PPO-based learning algorithm trains the final policy using both style-based and task-specific rewards, including regularization terms.
+            </li>
+            <li>
+              <strong>Zero-Shot Hardware Transfer:</strong> The trained policy is directly deployed on Unitree Go2 without the need for fine-tuning.
+            </li>
+          </ol>
+          <p>
+            More implementation details and the math behind why APEX works can be found in the <a href="https://arxiv.org/pdf/2505.10022">paper</a>.
+          </p>
+
+        </div>
+      </div>
+    </div>
+    <!--/ Method Section -->
+  </div>
+</section>
+
+
+    <!-- Concurrent Work. -->
+    <!-- <div class="section">
+  <div class="container">
+    <h2 class="title is-3">Related Links</h2>
+    <div class="content has-text-justified">
+      <p>
+        There's a lot of excellent work that was introduced around the same time as ours.
+      </p>
+      <p>
+        <a href="https://arxiv.org/abs/2104.09125">Progressive Encoding for Neural Optimization</a> introduces an idea similar to our windowed position encoding for coarse-to-fine optimization.
+      </p>
+      <p>
+        <a href="https://www.albertpumarola.com/research/D-NeRF/index.html">D-NeRF</a> and <a href="https://gvv.mpi-inf.mpg.de/projects/nonrigid_nerf/">NR-NeRF</a>
+        both use deformation fields to model non-rigid scenes.
+      </p>
+    </div>
+  </div>
+</div> -->
+
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <pre><code>@misc{sood2025apexactionpriorsenable,
+      title={APEX: Action Priors Enable Efficient Exploration for Skill Imitation on Articulated Robots}, 
+      author={Shivam Sood and Laukik B Nakhwa and Yuhong Cao and Sun Ge and Guillaume Sartoretti},
+      year={2025},
+      eprint={2505.10022},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2505.10022}, 
+}</code></pre>
+  </div>
+</section>
+
+
+<footer class="footer">
+  <div class="container">
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <p>
+            Page template borrowed from <a href="https://nerfies.github.io/">Nerfies</a>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
