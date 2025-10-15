@@ -83,10 +83,7 @@ The trained policies are in the logs folder. To run with (cool looking) viser vi
 python legged_gym/scripts/play_viser.py --task=go2_flat --load_run=<run_name>
 ```
 <div align="center">
-<video width="60%" autoplay muted loop>
-  <source src="assets/viser_vis_canter.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+<img src="assets/viser_vis_canter.gif" width="70%"/>
 </div>
 
 To run without viser visualization:
@@ -95,10 +92,11 @@ To run without viser visualization:
 python legged_gym/scripts/play.py --task=go2_flat --load_run=<run_name>
 ```
 Note: Change control_type to position for evaluation 
-## TODO
+## Upcoming
 - [x] Release training code
 - [ ] Release sim2sim code
 - [ ] Release sim2real code
+- [ ] Release Isaac Lab version 
 ## Credit
 If you find this work useful, please consider citing us and the following works:
 
