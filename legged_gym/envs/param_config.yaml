@@ -1,0 +1,85 @@
+# ============================================================================
+# CONTROL CONFIGURATION
+# ============================================================================
+# control_type options:
+#   - "position"          → regular position control (default for inference)
+#   - "apex_position"     → position control + action priors
+#   - "play_retarget_angles" → visualize imitation trajectories
+
+# control_type: "position"
+control_type: "apex_position"
+# control_type: "play_retarget_angles"
+
+action_scale: 0.25  #scaling for action commands
+
+# ============================================================================
+# ENVIRONMENT CONFIGURATION
+# ============================================================================
+
+num_envs: 4096
+control_decimation: 4
+#For canter, trot, pace, amble gaits: 19, for all gait 32, for sidesteps and hopturn 3
+episode_length: 19  #TODO calculate in the robot file based on the csv
+reference_state_init: False
+
+rough_terrain: False
+measure_heights: False
+fine_tune: False
+
+# ============================================================================
+# OBSERVATION SPACE CONFIGURATION
+# ============================================================================
+
+# Current: Flat terrain (no phase/imitation in obs); critic includes imitation features → (42, 77)
+number_observations: 42
+number_privileged_observations: 77
+
+# Alternatives:
+# Flat (base) (42, 48) | Flat+Phase (43, 49; if train_multi_skills=False, phase replaces skill indicator) | 
+# Flat+Imitation+Phase (77, 77) | Rough+Heightmap (42, 236) | Rough+Vision+Heightmap (230, 236)
+
+# ============================================================================
+# IMITATION LEARNING CONFIGURATION
+# ============================================================================
+
+train_multi_skills: False
+path_to_imitation_data: "imitation_data/animal_mocap/go2_retarget_canter_2ms.csv"
+use_imitation_commands: True  #Whether to use imitation commands (speed, yaw rate) or not, if not can set commands in robot config file
+
+# Alternative imitation data files (check imitation data folder for more):
+# path_to_imitation_data: "imitation_data/animal_mocap/go2_retarget_trot.csv"
+# path_to_imitation_data: "imitation_data/gait_switch/amble_pronk_pace_trot_canter.csv"
+
+# Imitation learning reward sensitivities (sigma)
+sigma_imit_angles: 0.01 #0.01    
+sigma_imit_foot_pos: 0.01 #0.01 
+
+
+# ============================================================================
+# DECAYING ACTION PRIORS CONFIGURATION
+# ============================================================================
+# decap_type: 'exp' | 'cosine-hybrid' | 'discrete'
+decap_type: 'exp' 
+
+# Exponential DecAP parameters
+gamma: 0.99
+k: 100
+
+# Cosine-hybrid DecAP parameters (used ONLY when decap_type: 'cosine-hybrid'), 
+constant_prior_iterations: 500
+cosine_decay_iterations: 20000
+
+# ============================================================================
+# MULTI-CRITIC CONFIGURATION
+# ============================================================================
+# Whether to use the one-critic ablation (single critic for all reward terms), false for APEX
+use_one_critic_ablation: False
+
+#Change if adding more reward groups
+multi_critic: True
+reward_group_num: 2
+
+# ============================================================================
+# VISUALIZATION CONFIGURATION
+# ============================================================================
+visualize_imitation_data: True
