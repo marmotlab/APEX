@@ -49,13 +49,13 @@
       <div class="container is-size-5">
         <div class="navbar-menu">
           <div class="navbar-end">
-            <a class="navbar-item pl-4 pr-4" href="https://arxiv.org/pdf/2505.10022">
+            <a class="navbar-item pl-4 pr-4" href="https://arxiv.org/pdf/2511.09091">
               <span class="icon" style="margin-right:5px;">
                 <img src="./static/images/pdf.svg" alt="PDF">
               </span>
               <span style="color: rgb(255, 255, 255);">Paper</span>
             </a>
-            <a class="navbar-item pl-4 pr-4" href="https://arxiv.org/abs/2505.10022">
+            <a class="navbar-item pl-4 pr-4" href="https://arxiv.org/abs/2511.09091">
               <span class="icon" style="margin-right:5px;">
                 <img src="./static/images/arxiv-logomark-small.svg" alt="ArXiv">
               </span>
@@ -73,7 +73,7 @@
     </header>
   </div>
   <!-- Background video -->
-  <video autoplay loop muted playsinline
+  <video autoplay loop muted playsinline preload="auto"
   style=" position: relative; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; background: #000; opacity: 0.85; z-index: 2; pointer-events: none;">
     <source src="./static/videos/apex_canter_atheltics_ground.mp4" type="video/mp4">
   </video>
@@ -172,7 +172,7 @@
             <div class="publication-links">
               <!-- PDF Link. -->
               <span class="link-block">
-                <a href="https://arxiv.org/pdf/2505.10022"
+                <a href="https://arxiv.org/pdf/2511.09091"
                    class="external-link button is-normal is-rounded is-dark">
                   <span class="icon">
                       <i class="fas fa-file-pdf"></i>
@@ -181,7 +181,7 @@
                 </a>
               </span>
               <span class="link-block">
-                <a href="https://arxiv.org/abs/2505.10022"
+                <a href="https://arxiv.org/abs/2511.09091"
                    class="external-link button is-normal is-rounded is-dark">
                   <span class="icon">
                       <i class="ai ai-arxiv"></i>
@@ -488,7 +488,7 @@
           <div class="item item-pace">
             <div class="box" style="background-color: #ffffff; box-shadow: 0 2px 8px rgba(33,163,102,0.15);">
               <h4 class="title is-5 has-text-centered mb-3">Pace</h4>
-              <video poster="" id="pace" autoplay controls muted loop playsinline style="width: 100%; border-radius: 8px;">
+              <video poster="" id="pace" autoplay controls muted loop playsinline preload="auto" style="width: 100%; border-radius: 8px;">
                 <source src="./static/videos/pace_apex.mp4" type="video/mp4">
               </video>
             </div>
@@ -498,7 +498,7 @@
           <div class="item item-trot">
             <div class="box" style="background-color: #ffffff; box-shadow: 0 2px 8px rgba(33,163,102,0.15);">
               <h4 class="title is-5 has-text-centered mb-3">Trot</h4>
-              <video poster="" id="trot" autoplay controls muted loop playsinline style="width: 100%; border-radius: 8px;">
+              <video poster="" id="trot" autoplay controls muted loop playsinline preload="metadata" style="width: 100%; border-radius: 8px;">
                 <source src="./static/videos/trot_apex.mp4" type="video/mp4">
               </video>
             </div>
@@ -508,8 +508,8 @@
           <div class="item item-canter">
             <div class="box" style="background-color: #ffffff; box-shadow: 0 2px 8px rgba(33,163,102,0.15);">
               <h4 class="title is-5 has-text-centered mb-3">Canter</h4>
-              <video poster="" id="canter" autoplay controls muted loop playsinline style="width: 100%; border-radius: 8px;">
-                <source src="./static/videos/canter_apex.mp4" type="video/mp4">
+              <video poster="" id="canter" autoplay controls muted loop playsinline preload="metadata" style="width: 100%; border-radius: 8px;">
+                <source src="./static/videos/apex_canter_atheltics_ground.mp4" type="video/mp4">
               </video>
             </div>
           </div>
@@ -518,7 +518,7 @@
           <div class="item item-pronk">
             <div class="box" style="background-color: #ffffff; box-shadow: 0 2px 8px rgba(33,163,102,0.15);">
               <h4 class="title is-5 has-text-centered mb-3">Pronk</h4>
-              <video poster="" id="pronk" autoplay controls muted loop playsinline style="width: 100%; border-radius: 8px;">
+              <video poster="" id="pronk" autoplay controls muted loop playsinline preload="metadata" style="width: 100%; border-radius: 8px;">
                 <source src="./static/videos/pronk_apex.mp4" type="video/mp4">
               </video>
             </div>
@@ -527,7 +527,7 @@
           <div class="item item-pronk">
             <div class="box" style="background-color: #ffffff; box-shadow: 0 2px 8px rgba(33,163,102,0.15);">
               <h4 class="title is-5 has-text-centered mb-3">Hopturn</h4>
-              <video poster="" id="hopturn" autoplay controls muted loop playsinline style="width: 100%; border-radius: 8px;">
+              <video poster="" id="hopturn" autoplay controls muted loop playsinline preload="metadata" style="width: 100%; border-radius: 8px;">
                 <source src="./static/videos/hopturn_apex.mp4" type="video/mp4">
               </video>
             </div>
@@ -601,12 +601,12 @@
     <h2 class="title">BibTeX</h2>
     <pre><code>@misc{sood2025apexactionpriorsenable,
       title={APEX: Action Priors Enable Efficient Exploration for Robust Motion Tracking on Legged Robots}, 
-      author={Shivam Sood and Laukik B Nakhwa and Yuhong Cao and Sun Ge and Guillaume Sartoretti},
+      author={Shivam Sood and Laukik Nakhwa and Sun Ge and Yuhong Cao and Jin Cheng and Fatemah Zargarbashi and Taerim Yoon and Sungjoon Choi and Stelian Coros and Guillaume Sartoretti},
       year={2025},
-      eprint={2505.10022},
+      eprint={2511.09091},
       archivePrefix={arXiv},
       primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2505.10022}, 
+      url={https://arxiv.org/abs/2511.09091}, 
 }</code></pre>
   </div>
 </section>
