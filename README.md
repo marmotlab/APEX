@@ -1,5 +1,5 @@
-<h1 align="center"> APEX: Action Priors Enable Efficient Exploration for
-Skill Imitation on Articulated Robots </h1>
+<h1 align="center"> APEX: Action Priors Enable Efficient Exploration for Robust Motion Tracking on Legged Robots
+ </h1>
 
 <div align="center">
 
@@ -103,11 +103,14 @@ If you find this work useful, please consider citing us and the following works:
 + APEX: Action Priors Enable Efficient Exploration for Skill Imitation on Articulated Robots
 
 ```bibtex
-@article{sood2025apex,
-  title={APEX: Action Priors Enable Efficient Exploration for Skill Imitation on Articulated Robots},
-  author={Sood, Shivam and Nakhwa, Laukik B and Cao, Yuhong and Ge, Sun and Sartoretti, Guillaume},
-  journal={arXiv preprint arXiv:2505.10022},
-  year={2025}
+@misc{sood2025apexactionpriorsenable,
+      title={APEX: Action Priors Enable Efficient Exploration for Robust Motion Tracking on Legged Robots}, 
+      author={Shivam Sood and Laukik Nakhwa and Sun Ge and Yuhong Cao and Jin Cheng and Fatemah Zargarbashi and Taerim Yoon and Sungjoon Choi and Stelian Coros and Guillaume Sartoretti},
+      year={2025},
+      eprint={2505.10022},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2505.10022}, 
 }
 ```
 
