@@ -424,7 +424,7 @@ def play(args):
     plot_state = setup_real_time_plots(server)
 
     # URDF
-    go2_urdf_path = "/home/marmot/Sood/delete_later/kakashi/resources/robots/go2/urdf/go2.urdf"
+    go2_urdf_path = os.path.join(LEGGED_GYM_ROOT_DIR, "resources", "robots", "go2", "urdf", "go2.urdf")
     urdf = yourdfpy.URDF.load(go2_urdf_path, load_meshes=True, build_scene_graph=True,
                               load_collision_meshes=False, build_collision_scene_graph=False)
     root = server.scene.add_frame("/robot", axes_length=0.0, axes_radius=0.0)
