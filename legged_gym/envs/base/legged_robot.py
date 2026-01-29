@@ -257,6 +257,13 @@ class LeggedRobot(BaseTask):
 		#if first iteration, get the default base position for imitation transformation and create the sphere actor
 		if self.common_step_counter == 1:
 			self.default_base_pos = self.base_pos.clone()
+			# Compute default foot positions in body frame for standing pose
+			cur_footsteps_translated = self.foot_positions - self.base_pos.unsqueeze(1)
+			self.default_foot_pos_body_frame = torch.zeros(self.num_envs, 4, 3, device=self.device)
+			for i in range(4):
+				self.default_foot_pos_body_frame[:, i, :] = quat_apply_yaw(quat_conjugate(self.base_quat),
+																	  cur_footsteps_translated[:, i, :])
+			self.default_foot_pos_body_frame = self.default_foot_pos_body_frame.reshape(self.num_envs, 12)
 			# env_lower = gymapi.Vec3(0., 0., 0.)
 			# env_upper = gymapi.Vec3(0., 0., 0.)
 			# env_handle = self.gym.create_env(self.sim, env_lower, env_upper, 1)
@@ -323,7 +330,7 @@ class LeggedRobot(BaseTask):
 		self._randomize_dof_props(env_ids, self.cfg)
 
 		if self.cfg.commands.use_imitation_commands:
-			self._sample_imitation_commands()
+			self._sample_imitation_commands(env_ids)
 		
 		else:
 			self._resample_commands(env_ids)
@@ -618,7 +625,8 @@ class LeggedRobot(BaseTask):
 		"""
 		# 
 		if self.cfg.commands.use_imitation_commands:
-			self._sample_imitation_commands()
+			env_ids = (self.episode_length_buf % int(self.cfg.commands.resampling_time / self.dt)==0).nonzero(as_tuple=False).flatten()
+			self._sample_imitation_commands(env_ids)
 		else:
 			env_ids = (self.episode_length_buf % int(self.cfg.commands.resampling_time / self.dt)==0).nonzero(as_tuple=False).flatten()
 			self._resample_commands(env_ids)
@@ -632,31 +640,41 @@ class LeggedRobot(BaseTask):
 		if self.cfg.domain_rand.push_robots and  (self.common_step_counter % self.cfg.domain_rand.push_interval == 0):
 			self._push_robots()
 
-	def _sample_imitation_commands(self):
+	def _sample_imitation_commands(self, env_ids):
+			# Only process if there are environments to resample
+			if len(env_ids) == 0:
+				return
+			
 			if self.cfg.asset.name == 'cassie': #Humanoid:
-				index_array = self.imitation_index.detach().cpu().numpy().astype(int)
-				lin_vel_imit_arr = self.df_imit.iloc[index_array,:3].to_numpy()
-				self.commands[:, 0] = torch.full(((self.num_envs), 1),self.df_imit.iloc[index_array,12].to_numpy()[0], device=self.device).squeeze(1)
-				self.commands[:, 1] = torch.full(((self.num_envs), 1),self.df_imit.iloc[index_array,13].to_numpy()[0], device=self.device).squeeze(1)
+				index_array = self.imitation_index[env_ids].detach().cpu().numpy().astype(int)
+				self.commands[env_ids, 0] = torch.tensor([self.df_imit.iloc[idx, 12] for idx in index_array], dtype=torch.float32, device=self.device)
+				self.commands[env_ids, 1] = torch.tensor([self.df_imit.iloc[idx, 13] for idx in index_array], dtype=torch.float32, device=self.device)
 				if self.cfg.commands.heading_command:
-					self.commands[:, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], ((self.num_envs), 1), device=self.device).squeeze(1)
+					self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], (len(env_ids), 1), device=self.device).squeeze(1)
 				else:
-					self.commands[:, 2] = torch.full(((self.num_envs), 1),self.df_imit.iloc[index_array,14].to_numpy()[0], device=self.device).squeeze(1)
+					self.commands[env_ids, 2] = torch.tensor([self.df_imit.iloc[idx, 14] for idx in index_array], dtype=torch.float32, device=self.device)
 			else:
-				index_array = self.imitation_index.detach().cpu().numpy().astype(int)
-				# lin_vel_imit_arr = self.df_imit.iloc[index_array,:3].to_numpy()
-				# Add random range [-0.5, 0.5] to the commands
-				# random_offset_x = torch_rand_float(-0.5, 0.5, (self.num_envs, 1), device=self.device).squeeze(1)
-				# random_offset_y = torch_rand_float(-0.5, 0.5, (self.num_envs, 1), device=self.device).squeeze(1)
-    
-				self.commands[:, 0] = torch.full(((self.num_envs), 1),self.df_imit.iloc[index_array,18].to_numpy()[0], device=self.device).squeeze(1) 
-				self.commands[:, 1] = torch.full(((self.num_envs), 1),self.df_imit.iloc[index_array,19].to_numpy()[0], device=self.device).squeeze(1)
+				index_array = self.imitation_index[env_ids].detach().cpu().numpy().astype(int)
+				# Add random offsets to imitation commands
+				# X velocity: add offset [-1.0, 1.0], clamped to [0.0, 3.0]
+				random_offset_x = torch_rand_float(-1.0, 1.0, (len(env_ids), 1), device=self.device).squeeze(1)
+				# Y velocity: add offset [-0.1, 0.1], clamped to [-0.1, 0.1]
+				random_offset_y = torch_rand_float(-0.1, 0.1, (len(env_ids), 1), device=self.device).squeeze(1)
+				
+				base_cmd_x = torch.tensor([self.df_imit.iloc[idx, 18] for idx in index_array], dtype=torch.float32, device=self.device)
+				base_cmd_y = torch.tensor([self.df_imit.iloc[idx, 19] for idx in index_array], dtype=torch.float32, device=self.device)
+				
+				self.commands[env_ids, 0] = torch.clamp(base_cmd_x + random_offset_x, 0.0, 3.0)
+				self.commands[env_ids, 1] = torch.clamp(base_cmd_y + random_offset_y, -0.1, 0.1)
+				
 				if self.cfg.commands.heading_command:
-					self.commands[:, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], ((self.num_envs), 1), device=self.device).squeeze(1)
+					self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], (len(env_ids), 1), device=self.device).squeeze(1)
 				else:
-					# random_offset_yaw = torch_rand_float(-1.0, 1.0, (self.num_envs, 1), device=self.device).squeeze(1)
-					self.commands[:, 2] = torch.full(((self.num_envs), 1),self.df_imit.iloc[index_array,20].to_numpy()[0], device=self.device).squeeze(1)
-			# print("COMMAND",self.commands[0, :], "INDEX", self.imitation_index[0])
+					# Yaw command: randomly sample from [-1.5, 1.5]
+					self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+
+				# set small commands to zero
+				self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.1).unsqueeze(1)
 
 	def _resample_commands(self, env_ids):
 		# print(env_ids)
@@ -665,28 +683,15 @@ class LeggedRobot(BaseTask):
 		Args:
 			env_ids (List[int]): Environments ids for which new commands are needed
 		"""
-		if self.cfg.commands.use_imitation_commands:
-			self.commands[env_ids, 0] = torch.full((len(env_ids), 1),0.5, device=self.device).squeeze(1)
-			self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], self.command_ranges["lin_vel_y"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-			if self.cfg.commands.heading_command:
-				self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-			else:
-				self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-			if self.imitation_index[0] == 500:
-				print("ENTERED")
-				self.commands[env_ids, 0] = torch.full((len(env_ids), 1),-0.5, device=self.device).squeeze(1)
-			# print("COMMAND",self.commands[0, 0], "INDEX", self.imitation_index[0])
-
+		self.commands[env_ids, 0] = torch_rand_float(self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_x"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+		self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], self.command_ranges["lin_vel_y"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+		if self.cfg.commands.heading_command:
+			self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], (len(env_ids), 1), device=self.device).squeeze(1)
 		else:
-			self.commands[env_ids, 0] = torch_rand_float(self.command_ranges["lin_vel_x"][0], self.command_ranges["lin_vel_x"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-			self.commands[env_ids, 1] = torch_rand_float(self.command_ranges["lin_vel_y"][0], self.command_ranges["lin_vel_y"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-			if self.cfg.commands.heading_command:
-				self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-			else:
-				self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+			self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
 
-			# set small commands to zero
-			self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.1).unsqueeze(1)
+		# set small commands to zero
+		self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.1).unsqueeze(1)
 
 	def _compute_torques(self, actions):
 		""" Compute torques from actions.
@@ -904,6 +909,7 @@ class LeggedRobot(BaseTask):
 		self.commands_scale = torch.tensor([self.obs_scales.lin_vel, self.obs_scales.lin_vel, self.obs_scales.ang_vel], device=self.device, requires_grad=False,) # TODO change this
 		self.feet_air_time = torch.zeros(self.num_envs, self.feet_indices.shape[0], dtype=torch.float, device=self.device, requires_grad=False)
 		self.last_contacts = torch.zeros(self.num_envs, len(self.feet_indices), dtype=torch.bool, device=self.device, requires_grad=False)
+		self.last_foot_velocities = torch.zeros(self.num_envs, len(self.feet_indices), 3, dtype=torch.float, device=self.device, requires_grad=False)
 		self.base_lin_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 7:10])
 		self.base_ang_vel = quat_rotate_inverse(self.base_quat, self.root_states[:, 10:13])
 		self.projected_gravity = quat_rotate_inverse(self.base_quat, self.gravity_vec)

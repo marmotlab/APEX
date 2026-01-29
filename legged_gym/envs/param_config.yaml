@@ -31,7 +31,7 @@ fine_tune: False
 # ============================================================================
 
 # Current: Flat terrain (no phase/imitation in obs); critic includes imitation features → (42, 77)
-number_observations: 42
+number_observations: 45
 number_privileged_observations: 77
 
 # Alternatives:

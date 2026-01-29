@@ -15,6 +15,11 @@
 </div>
 
 ---
+## Updates
+- [x] Release training code
+- [x] Release sim2sim code
+- [x] Release sim2real code
+- [ ] Release Isaac Lab version 
 ### Installation
 
 Follow these steps to set up the [legged_gym](https://github.com/leggedrobotics/legged_gym) environment:
@@ -80,10 +85,10 @@ Common changes include:
 The trained policies are in the logs folder. To run with (cool looking) viser visualization:
 
 ```console
-python legged_gym/scripts/play_viser.py --task=go2_flat --load_run=<run_name>
+python legged_gym/scripts/play_viser.py --task=go2_flat --load_run=<run_name> --headless
 ```
 <div align="center">
-<img src="assets/viser_vis_canter.gif" width="70%"/>
+<img src="assets/all_gait_sim.gif" width="70%"/>
 </div>
 
 To run without viser visualization:
@@ -92,15 +97,19 @@ To run without viser visualization:
 python legged_gym/scripts/play.py --task=go2_flat --load_run=<run_name>
 ```
 Note: Change control_type to position for evaluation 
-## Upcoming
-- [x] Release training code
-- [ ] Release sim2sim code
-- [ ] Release sim2real code
-- [ ] Release Isaac Lab version 
+
+## Sim2Sim and Hardware Deployment
+
+For sim2sim and hardware deployment, check the following repository: https://github.com/shivam-sood00/unitree-sim2real
+
+<div align="center">
+<img src="assets/all_gait.gif" width="70%"/>
+</div>
+
 ## Credit
 If you find this work useful, please consider citing us and the following works:
 
-+ APEX: Action Priors Enable Efficient Exploration for Skill Imitation on Articulated Robots
++ APEX: Action Priors Enable Efficient Exploration for Robust Motion Tracking on Legged Robots
 
 ```bibtex
 @misc{sood2025apexactionpriorsenable,

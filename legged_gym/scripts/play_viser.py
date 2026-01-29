@@ -88,20 +88,20 @@ def _uplot(server, series, aspect=2.0, init_dim=1):
 
 def setup_real_time_plots(server: viser.ViserServer, max_points: int = 300) -> dict:
     plot_state = {
-        "time": np.array([]),
+        "time": deque(maxlen=max_points),
         "max_points": max_points,
         "plots": {},
-        "buf": {  # minimal set we actually render
-            "dof_vel": [],
-            "dof_torque": [],
-            "base_vel_x": [],
-            "base_vel_y": [],
-            "base_vel_z": [],
-            "base_vel_yaw": [],
-            "command_x": [],
-            "command_y": [],
-            "command_yaw": [],
-            "contact_forces_z": [],
+        "buf": {  # minimal set we actually render - using deque for auto-trimming
+            "dof_vel": deque(maxlen=max_points),
+            "dof_torque": deque(maxlen=max_points),
+            "base_vel_x": deque(maxlen=max_points),
+            "base_vel_y": deque(maxlen=max_points),
+            "base_vel_z": deque(maxlen=max_points),
+            "base_vel_yaw": deque(maxlen=max_points),
+            "command_x": deque(maxlen=max_points),
+            "command_y": deque(maxlen=max_points),
+            "command_yaw": deque(maxlen=max_points),
+            "contact_forces_z": deque(maxlen=max_points),
         },
     }
     with server.gui.add_folder("📊 Real-time Plots"):
@@ -146,21 +146,15 @@ def setup_real_time_plots(server: viser.ViserServer, max_points: int = 300) -> d
             )
     return plot_state
 
-def _trim_timebuf(ps: dict):
-    max_pts = ps["max_points"]
-    if len(ps["time"]) > max_pts:
-        ps["time"] = ps["time"][-max_pts:]
-        for k in ps["buf"]:
-            if ps["buf"][k]:
-                ps["buf"][k] = ps["buf"][k][-max_pts:]
-
 def update_real_time_plots(ps: dict, log: dict, t: float) -> None:
-    ps["time"] = np.append(ps["time"], t)
+    # Append new data - deque automatically removes oldest when full
+    ps["time"].append(t)
     for k, v in log.items():
         if k in ps["buf"]:
             ps["buf"][k].append(v)
-    _trim_timebuf(ps)
-    time_data = ps["time"]
+    
+    # Convert deques to numpy arrays for plotting
+    time_data = np.array(ps["time"])
 
     # base vel X/Y with commands
     for axis, cmd in (("base_vel_x", "command_x"), ("base_vel_y", "command_y")):
@@ -222,12 +216,12 @@ def setup_camera_gui(server: viser.ViserServer, connected: dict) -> dict:
         height=0.6,        # a bit higher
         angle=-28.0,
         orbit_speed=0.5, orbit_theta=0.0,
-        # stronger smoothing by default
-        tau_pos=0.30, tau_vel=0.45, tau_z=1.20, tau_cam=0.35,
-        max_speed=6.0, max_accel=30.0,
+        # Much stronger smoothing for jerky motion reduction
+        tau_pos=0.80, tau_vel=1.20, tau_z=2.00, tau_cam=0.80,
+        max_speed=3.0, max_accel=15.0,  # Reduced limits for smoother motion
         pos_est=None, vel_est=None, z_follow=None,
-        tau_yaw=0.35, yaw_est=None, yaw_vel=0.0, yaw_look_ahead=0.6, _yaw_last=None,
-        smooth=0.3, z_fixed=None,
+        tau_yaw=0.80, yaw_est=None, yaw_vel=0.0, yaw_look_ahead=0.6, _yaw_last=None,
+        smooth=0.5, z_fixed=None,
         # --- z stabilization + auto zoom ---
         z_gain=0.0,        # 0=lock horizon, 1=follow Z fully
         lock_z=True,       # <— hard lock Z by default
@@ -250,7 +244,7 @@ def setup_camera_gui(server: viser.ViserServer, connected: dict) -> dict:
             dist   = client.gui.add_slider("Distance", 0.6, 5.0, 0.1, state["distance"])
             height = client.gui.add_slider("Height", 0.3, 3.0, 0.1, state["height"])
             angle  = client.gui.add_slider("Angle", -90.0, 90.0, 1.0, state["angle"])
-            smooth = client.gui.add_slider("Smooth", 0.05, 0.5, 0.01, state["smooth"])
+            smooth = client.gui.add_slider("Smooth", 0.05, 1.5, 0.05, state["smooth"])
             orbit  = client.gui.add_slider("Orbit Speed", 0.1, 3.0, 0.1, state["orbit_speed"])
             yaw_la = client.gui.add_slider("Yaw Look-ahead", 0.0, 2.0, 0.1, state["yaw_look_ahead"])
             z_gain = client.gui.add_slider("Z Gain (0=lock,1=follow)", 0.0, 1.0, 0.05, state["z_gain"])
@@ -404,6 +398,9 @@ def play(args):
     env_cfg.noise.add_noise = False
     env_cfg.domain_rand.randomize_friction = False
     env_cfg.domain_rand.push_robots = False
+    
+    # Override control type to 'position'
+    env_cfg.control.control_type = 'position'
 
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
     obs = env.get_observations()
@@ -443,12 +440,11 @@ def play(args):
 
     # Indices / limits
     robot_i, joint_i = 0, 2
-    stop_state_log = 1000
     stop_rew_log = env.max_episode_length + 1
 
     # Histories
-    path_pts = deque(maxlen=600)
-    foot_hist = deque(maxlen=240)
+    path_pts = deque(maxlen=100)
+    foot_hist = deque(maxlen=100)
 
     # Timing
     target_dt = 1.0 / 60.0
@@ -535,24 +531,21 @@ def play(args):
                 print("Avg Err Height", float(np.sqrt(np.mean(err_h))))
                 err_angles.clear(); err_vel.clear(); err_h.clear(); FF_counter = 0
 
-        # Real-time plots (compact)
-        if i <= stop_state_log:
-            log = dict(
-                dof_vel=float(env.dof_vel[robot_i, joint_i].item()),
-                dof_torque=float(env.torques[robot_i, joint_i].item()),
-                command_x=float(env.commands[robot_i, 0].item()),
-                command_y=float(env.commands[robot_i, 1].item()),
-                command_yaw=float(env.commands[robot_i, 2].item()),
-                base_vel_x=float(env.base_lin_vel[robot_i, 0].item()),
-                base_vel_y=float(env.base_lin_vel[robot_i, 1].item()),
-                base_vel_z=float(env.base_lin_vel[robot_i, 2].item()),
-                base_vel_yaw=float(env.base_ang_vel[robot_i, 2].item()),
-                contact_forces_z=env.contact_forces[robot_i, env.feet_indices, 2].detach().cpu().numpy(),
-            )
-            if i % 3 == 0:
-                update_real_time_plots(plot_state, log, i * env.dt)
-            if i == stop_state_log:
-                print("📊 Real-time plotting complete - all plots updated in browser")
+        # Real-time plots - continuously update using buffer system
+        log = dict(
+            dof_vel=float(env.dof_vel[robot_i, joint_i].item()),
+            dof_torque=float(env.torques[robot_i, joint_i].item()),
+            command_x=float(env.commands[robot_i, 0].item()),
+            command_y=float(env.commands[robot_i, 1].item()),
+            command_yaw=float(env.commands[robot_i, 2].item()),
+            base_vel_x=float(env.base_lin_vel[robot_i, 0].item()),
+            base_vel_y=float(env.base_lin_vel[robot_i, 1].item()),
+            base_vel_z=float(env.base_lin_vel[robot_i, 2].item()),
+            base_vel_yaw=float(env.base_ang_vel[robot_i, 2].item()),
+            contact_forces_z=env.contact_forces[robot_i, env.feet_indices, 2].detach().cpu().numpy(),
+        )
+        if i % 3 == 0:  # Update plots every 3 steps to reduce overhead
+            update_real_time_plots(plot_state, log, i * env.dt)
 
         # Reward prints (without matplotlib)
         if 0 < i < stop_rew_log and infos and "episode" in infos:
@@ -561,7 +554,7 @@ def play(args):
                     if "rew" in k:
                         print(f"Episode {k}: {v.item():.3f}")
         elif i == stop_rew_log:
-            print("📊 Episode reward logging complete")
+            print("Episode reward logging complete")
 
         # frame pacing
         elapsed = time.perf_counter() - loop_t0

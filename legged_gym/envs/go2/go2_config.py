@@ -147,6 +147,8 @@ class GO2FlatCfg( LeggedRobotCfg ):
 
 					imitate_quat = 0.0#1.5#0.5
 					energy = -0.0 #-0.001
+					impact_reduction = 2.5e-3
+					# foot_force_reduction = 2.5e-4
 
 					if rough_terrain:
 						imitation_height_penalty = -0.0
@@ -156,7 +158,7 @@ class GO2FlatCfg( LeggedRobotCfg ):
 
 
 					else:
-						imitation_height_penalty = -30.0
+						imitation_height_penalty = -10.0
 						stumble = 0.0 
 						ang_vel_xy = -0.05#-0.05
 
@@ -227,12 +229,12 @@ class GO2FlatCfg( LeggedRobotCfg ):
 		randomize_friction = True
 		friction_range = [0.3, 1.25]
 		randomize_base_mass = True
-		added_mass_range = [-1., 1.]
+		added_mass_range = [-1., 2.]
 		if not rough_terrain:
 			push_robots = True
 			push_interval_s = 4 #5
-			max_push_vel_xy = 0.4 #1.5
-			max_push_vel_ang = 0.6 #1.2
+			max_push_vel_xy = 0.6 #1.5
+			max_push_vel_ang = 0.8 #1.2
 		else:
 			push_robots = False
 			push_interval_s = 5

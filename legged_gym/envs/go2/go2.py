@@ -203,7 +203,7 @@ class Go2(LeggedRobot):
 		self._randomize_dof_props(env_ids, self.cfg)
 
 		if self.cfg.commands.use_imitation_commands:
-			self._sample_imitation_commands()
+			self._sample_imitation_commands(env_ids)
 		
 		else:
 			self._resample_commands(env_ids)
@@ -212,6 +212,7 @@ class Go2(LeggedRobot):
 		self.last_actions[env_ids] = 0.
 		self.last_dof_vel[env_ids] = 0.
 		self.feet_air_time[env_ids] = 0.
+		self.last_foot_velocities[env_ids] = 0.
 		self.episode_length_buf[env_ids] = 0
 		self.reset_buf[env_ids] = 1
 		# fill extras
@@ -731,7 +732,7 @@ class Go2(LeggedRobot):
 
 		if control_type == 'apex_position':
 			#Decap factor can empirically set as max (0.06, decap_factor) for more stable training after decay, can be removed without any major performance loss
-			self.decap_factor = torch.clip(self.decap_factor, 0.06, 1.0)
+			# self.decap_factor = torch.clip(self.decap_factor, 0.06, 1.0)
 			#For decap p_gains can have stronger gains for more bias if needed
 			# p_gains_decap = self.p_gains * 1.3
 			torques =  self.p_gains*self.Kp_factors*(self.joint_pos_target - self.dof_pos + self.motor_offsets) - self.Kd_factors*self.d_gains*self.dof_vel +  self.decap_factor*(self.p_gains*(dof_imit_arr - self.dof_pos))
@@ -803,6 +804,7 @@ class Go2(LeggedRobot):
 				self.actions,
 				imitation_phase.unsqueeze(1),
 				),dim=-1)
+			
 		elif self.number_observations == 77:
 			indices = self.imitation_index.long()
 			# Reference joint positions (12 values)
@@ -825,6 +827,15 @@ class Go2(LeggedRobot):
 				quat_ref,                                           # 4 (reference quaternions)
 			), dim=-1)
 			# Total: 3+3+3+3+12+12+12+1+12+12+4 = 77
+		elif self.number_observations == 46 and self.train_multi_skills:
+			self.obs_buf = torch.cat((  self.base_ang_vel  * self.obs_scales.ang_vel,
+							self.projected_gravity,
+							self.commands[:, :3] * self.commands_scale,
+							(self.dof_pos - self.default_dof_pos) * self.obs_scales.dof_pos,
+							self.dof_vel * self.obs_scales.dof_vel,
+							self.actions,
+							skill_number.unsqueeze(1),
+							),dim=-1)
 		else:
 			self.obs_buf = torch.cat((  self.projected_gravity,
 							self.commands[:, :3] * self.commands_scale,
@@ -1098,7 +1109,11 @@ class Go2(LeggedRobot):
 		# Use preprocessed imitation data
 		dof_imit_arr = self.imit_joint_pos[self.imitation_index.long()]
 		
-		dof_imit_error = torch.mean(torch.square(self.dof_pos - dof_imit_arr)*self.obs_scales.dof_imit, dim=-1)  
+		# When linear command is zero (standing still), use default_dof_pos instead
+		is_standing = torch.norm(self.commands[:, :2], dim=1) < 0.1  # [num_envs]
+		dof_target = torch.where(is_standing.unsqueeze(1), self.default_dof_pos, dof_imit_arr)
+		
+		dof_imit_error = torch.mean(torch.square(self.dof_pos - dof_target)*self.obs_scales.dof_imit, dim=-1)  
 		
 		return torch.exp(-dof_imit_error / self.sigma_imit_angles)
 	
@@ -1167,15 +1182,18 @@ class Go2(LeggedRobot):
 		# Use preprocessed imitation data
 		end_effector_ref = self.imit_end_effector[self.imitation_index.long()]
 
+		# When linear command is zero (standing still), use default foot positions instead
+		is_standing = torch.norm(self.commands[:, :2], dim=1) < 0.1  # [num_envs]
+		end_effector_target = torch.where(is_standing.unsqueeze(1), self.default_foot_pos_body_frame, end_effector_ref)
+
 		cur_footsteps_translated = self.foot_positions - self.base_pos.unsqueeze(1)
 		footsteps_in_body_frame = torch.zeros(self.num_envs, 4, 3, device=self.device)
 		for i in range(4):
 			footsteps_in_body_frame[:, i, :] = quat_apply_yaw(quat_conjugate(self.base_quat),
-															  cur_footsteps_translated[:, i, :])
+														  cur_footsteps_translated[:, i, :])
 		footsteps_in_body_frame = footsteps_in_body_frame.reshape(self.num_envs, 12)
 
-		end_effector_error = torch.sum(torch.square(end_effector_ref - footsteps_in_body_frame), dim=-1)
-		
+		end_effector_error = torch.sum(torch.square(end_effector_target - footsteps_in_body_frame), dim=-1)		
 		if self.visualize_imitation_data:
 			#Clear lines after 10 steps
 			self.clear_lines()
@@ -1338,7 +1356,41 @@ class Go2(LeggedRobot):
 		foot_velocities = torch.square(torch.norm(self.foot_velocities[:, :, 0:2], dim=2).view(self.num_envs, -1))
 		rew_slip = torch.sum(contact_filt * foot_velocities, dim=1)
 		return rew_slip
+
+	def _reward_impact_reduction(self):
+		"""
+		Penalize changes in vertical (z) foot velocity to reduce impact noise (based on Disney's Olaf paper)
+		Formula: -Σi∈{feet} min(Δv²i,z , Δv²max)
+		The saturation prevents large velocity changes during contact resolution from destabilizing critic learning.
+		"""
+		# Maximum squared velocity change (saturation threshold) - can be tuned
+		delta_v_max_squared = 2.0  # m²/s²
+		
+		# Compute change in vertical velocity for each foot
+		delta_v_z = self.foot_velocities[:, :, 2] - self.last_foot_velocities[:, :, 2]  # [num_envs, num_feet]
+		delta_v_z_squared = delta_v_z ** 2
+		
+		# Apply saturation and sum over all feet
+		saturated_delta = torch.minimum(delta_v_z_squared, torch.tensor(delta_v_max_squared, device=self.device))
+		total_impact = torch.sum(saturated_delta, dim=1)
+		
+		# Update last foot velocities for next timestep
+		self.last_foot_velocities[:] = self.foot_velocities
+		
+		# Return negative (penalty)
+		return -total_impact
 	
+	def _reward_foot_force_reduction(self):
+		# Only penalize forces when foot is in contact
+		contact = self.contact_forces[:, self.feet_indices, 2] > 1.0
+		foot_forces = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=2)
+		
+		# Saturate to prevent huge spikes from destabilizing learning
+		force_max = 120.0  # N (Go2 is ~15kg, standing force per foot ~37N)
+		saturated_forces = torch.minimum(foot_forces, torch.tensor(force_max, device=self.device))
+		
+		return -torch.sum(contact * saturated_forces, dim=1)
+		
 	def _reward_tracking_contacts_shaped_force(self):
 		foot_forces = torch.norm(self.contact_forces[:, self.feet_indices, :], dim=-1)
 		desired_contact = self.desired_contact_states
