@@ -10,7 +10,7 @@ with open(f"legged_gym/envs/param_config.yaml", "r") as f:
 	multi_critic = config['multi_critic']
 	reward_group_num = config['reward_group_num']
 	rough_terrain = config['rough_terrain']
-	episode_length = config['episode_length']
+	episode_length = config.get('episode_length', 20)
 	fine_tune = config['fine_tune']
 	number_observations = config['number_observations']
 	number_privileged_obs = config['number_privileged_observations']
@@ -59,6 +59,7 @@ class H1RoughCfg( LeggedRobotCfg ):
 		num_privileged_obs = 44
 		num_actions = 10
 		num_envs = num_envs
+		episode_length_s = episode_length
 
 	class terrain:
 		if rough_terrain:

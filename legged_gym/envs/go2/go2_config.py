@@ -10,7 +10,6 @@ with open(f"legged_gym/envs/param_config.yaml", "r") as f:
 	multi_critic = config['multi_critic']
 	reward_group_num = config['reward_group_num']
 	rough_terrain = config['rough_terrain']
-	episode_length = config['episode_length']
 	fine_tune = config['fine_tune']
 	number_observations = config['number_observations']
 	number_privileged_obs = config['number_privileged_observations']
@@ -23,7 +22,6 @@ class GO2FlatCfg( LeggedRobotCfg ):
 		num_observations = number_observations
 		num_privileged_obs = number_privileged_obs
 		num_envs = num_envs
-		episode_length_s = episode_length # episode length in seconds
 
 	class init_state( LeggedRobotCfg.init_state ):
 		if control_type == 'apex_torque':
@@ -334,8 +332,8 @@ class GO2FlatCfgPPO( LeggedRobotCfgPPO ):
 			entropy_coef = 0.01
 	class runner( LeggedRobotCfgPPO.runner ):
 		run_name = ''
-		experiment_name = 'apex_go2_flat'
-		max_iterations = 1000
+		experiment_name = 'apex_IROS_pronk'
+		max_iterations = 1200
 		save_interval = 200 # check for potential saves every this many iterations
 		policy_class_name = "MultiCriticActorCritic"  #'ActorCritic'
 		algorithm_class_name = "MultiCriticPPO"     # 'PPO'
