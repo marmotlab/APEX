@@ -10,7 +10,6 @@ with open(f"legged_gym/envs/param_config.yaml", "r") as f:
 	multi_critic = config['multi_critic']
 	reward_group_num = config['reward_group_num']
 	rough_terrain = config['rough_terrain']
-	episode_length = config['episode_length']
 	fine_tune = config['fine_tune']
 	number_observations = config['number_observations']
 	number_privileged_obs = config['number_privileged_observations']

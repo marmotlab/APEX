@@ -81,6 +81,12 @@ class LeggedRobot(BaseTask):
 		if not self.headless:
 			self.set_camera(self.cfg.viewer.pos, self.cfg.viewer.lookat)
 		self.df_imit = pd.read_csv(path_to_imitation_data, parse_dates=False)
+		self.df_imit_tensor = torch.from_numpy(self.df_imit.to_numpy(dtype=np.float32)).to(self.device)
+		df_imit_rows = len(self.df_imit.index)
+		if df_imit_rows > 1:
+			self.max_episode_length = df_imit_rows - 1
+			self.max_episode_length_s = self.max_episode_length * self.dt
+			self.cfg.env.episode_length_s = self.max_episode_length_s
 		self._init_buffers()
 		self._prepare_reward_function()
 		self.init_done = True
@@ -107,7 +113,15 @@ class LeggedRobot(BaseTask):
 		for _ in range(self.cfg.control.decimation):
 
 			control_type = self.cfg.control.control_type
-			self.torques = self._compute_torques(self.actions).view(self.torques.shape)
+			if control_type == "play_retarget_angles":
+				# Prefer env-specific replay torques when available (go2/g1/h1),
+				# otherwise keep zero torques as a safe fallback.
+				try:
+					self.torques = self._compute_torques(self.actions).view(self.torques.shape)
+				except (NameError, ValueError):
+					self.torques.zero_()
+			else:
+				self.torques = self._compute_torques(self.actions).view(self.torques.shape)
 
 			if control_type=="RP":
 				self.positions = self._compute_position_commands(self.actions).view(self.torques.shape)
@@ -115,79 +129,7 @@ class LeggedRobot(BaseTask):
 				self.gym.set_dof_position_target_tensor(self.sim, gymtorch.unwrap_tensor(self.positions))
 
 			elif control_type=="play_retarget_angles":
-				'''
-				Code to visualize the imitation data with the base fixed
-				'''
-				if self.cfg.asset.name == 'g1':
-					index_array = self.imitation_index.detach().cpu().numpy().astype(int)
-					# Get root states as a PyTorch tensor
-					root_states_copy = gymtorch.wrap_tensor(self.gym.acquire_actor_root_state_tensor(self.sim))
-
-					# Set fixed base position (e.g., 1m above the ground)
-					height_ref = self.df_imit.iloc[index_array,29].to_numpy() + 1.0
-					# height_ref = self.df_imit.iloc[index_array,29].to_numpy() 
-					# root_states_copy[:, 2] = torch.tensor([1.0], device=self.device)
-					root_states_copy[:, 2] = torch.from_numpy(height_ref).float().to(self.device)
-
-					# Set fixed orientation (optional: identity quaternion)
-					# root_states_copy[:, 3:7] = torch.tensor([0.0, 0.0, 0.0, 1.0], device=self.device)
-					quat_ref = self.df_imit.iloc[index_array,38:42].to_numpy()
-					quat_ref = quat_ref.reshape(self.num_envs, 4)
-					quat_ref = torch.from_numpy(quat_ref).float().to(self.device)
-					root_states_copy[:, 3:7] = quat_ref
-					# root_states_copy[:, 3:7] = torch.tensor([0.0, 0.0, 0.0, 1.0], device=self.device)
-
-					# Convert to torch tensor
-					lin_vel_ref = self.df_imit.iloc[index_array,:3].to_numpy()
-					lin_vel_ref = lin_vel_ref.reshape(self.num_envs, 3)
-					lin_vel_ref = torch.from_numpy(lin_vel_ref).float().to(self.device)
-					root_states_copy[:, 7:10] = lin_vel_ref  # Linear velocity (X, Y, Z)
-
-					#Zero angular and linear velocities
-					root_states_copy[:, 7:13] = torch.zeros(self.num_envs, 6).to(self.device)
-
-					ang_vel_ref = self.df_imit.iloc[index_array,3:6].to_numpy()
-					ang_vel_ref = ang_vel_ref.reshape(self.num_envs, 3)
-					ang_vel_ref = torch.from_numpy(ang_vel_ref).float().to(self.device)
-					root_states_copy[:, 10:13] = ang_vel_ref  # Angular velocity (X, Y, Z)
-					self.gym.set_actor_root_state_tensor(self.sim, gymtorch.unwrap_tensor(root_states_copy))
-					#Set zero torques
-					# self.torques = torch.zeros_like(self.torques)
-					self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques.contiguous()))
-
-				
-				else:
-					index_array = self.imitation_index.detach().cpu().numpy().astype(int)
-					# Get root states as a PyTorch tensor
-					root_states_copy = gymtorch.wrap_tensor(self.gym.acquire_actor_root_state_tensor(self.sim))
-
-					# Set fixed base position (e.g., 1m above the ground)
-					# height_ref = self.df_imit.iloc[index_array,21].to_numpy() + 0.29
-					height_ref = self.df_imit.iloc[index_array,21].to_numpy() 
-					# root_states_copy[:, 2] = torch.tensor([1.0], device=self.device)
-					root_states_copy[:, 2] = torch.from_numpy(height_ref).float().to(self.device)
-
-					# Set fixed orientation (optional: identity quaternion)
-					# root_states_copy[:, 3:7] = torch.tensor([0.0, 0.0, 0.0, 1.0], device=self.device)
-					quat_ref = self.df_imit.iloc[index_array,36:40].to_numpy()
-					quat_ref = quat_ref.reshape(self.num_envs, 4)
-					quat_ref = torch.from_numpy(quat_ref).float().to(self.device)
-					root_states_copy[:, 3:7] = quat_ref
-					# Convert to torch tensor
-					lin_vel_ref = self.df_imit.iloc[index_array,:3].to_numpy()
-					lin_vel_ref = lin_vel_ref.reshape(self.num_envs, 3)
-					lin_vel_ref = torch.from_numpy(lin_vel_ref).float().to(self.device)
-					root_states_copy[:, 7:10] = lin_vel_ref  # Linear velocity (X, Y, Z)
-
-					#Zero angular and linear velocities
-					# root_states_copy[:, 7:13] = torch.zeros(self.num_envs, 6).to(self.device)
-
-					ang_vel_ref = self.df_imit.iloc[index_array,3:6].to_numpy()
-					ang_vel_ref = ang_vel_ref.reshape(self.num_envs, 3)
-					ang_vel_ref = torch.from_numpy(ang_vel_ref).float().to(self.device)
-					root_states_copy[:, 10:13] = ang_vel_ref  # Angular velocity (X, Y, Z)
-					self.gym.set_actor_root_state_tensor(self.sim, gymtorch.unwrap_tensor(root_states_copy))
-					self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques.contiguous()))				
+				self._apply_play_retarget_angles()
 			
 			elif control_type=="RV":
 				self.gym.set_dof_velocity_target_tensor(self.sim, gymtorch.unwrap_tensor(self.torques))     
@@ -229,6 +171,109 @@ class LeggedRobot(BaseTask):
 		# print("Reward: ", self.rew_buf)
 		return self.obs_buf, self.privileged_obs_buf, self.rew_buf, self.reset_buf, self.extras
 
+	def _get_play_retarget_schema(self):
+		"""Select dataset columns for replay mode.
+		Optional overrides can be provided in param_config.yaml under:
+		retarget_replay_schemas:
+		  <asset_name>: {height_col, height_offset, quat_start, quat_end, lin_vel_start,
+						 lin_vel_end, ang_vel_start, ang_vel_end, zero_lin_vel, zero_ang_vel}
+		"""
+		schema = {
+			"height_col": 21,
+			"height_offset": 0.0,
+			"quat_start": 36,
+			"quat_end": 40,
+			"preserve_quat": False,
+			"lin_vel_start": 0,
+			"lin_vel_end": 3,
+			"ang_vel_start": 3,
+			"ang_vel_end": 6,
+			"zero_lin_vel": False,
+			"zero_ang_vel": False,
+		}
+
+		asset_name = getattr(self.cfg.asset, "name", "")
+		if asset_name == "g1":
+			schema.update({
+				"height_col": 29,
+				"height_offset": 1.0,
+				"quat_start": 38,
+				"quat_end": 42,
+				"zero_lin_vel": True,
+			})
+		elif asset_name == "h1":
+			# H1 imitation column layout (from h1_env rewards):
+			# 0:10 joints, 10 height, 11:17 feet (2x xyz), optional quaternion in some files.
+			# Keep replay conservative: only use columns known from rewards.
+			schema.update({
+				"height_col": 10,
+				"height_offset": 0.0,
+				"preserve_quat": True,
+				"zero_lin_vel": True,
+				"zero_ang_vel": True,
+				# Preserve simulated base velocities for H1 replay since common H1
+				# datasets do not contain true base lin/ang velocity columns.
+				"preserve_lin_vel": True,
+				"preserve_ang_vel": True,
+			})
+
+		override_map = config.get("retarget_replay_schemas", {})
+		if isinstance(override_map, dict):
+			asset_override = override_map.get(asset_name)
+			if isinstance(asset_override, dict):
+				schema.update(asset_override)
+
+		return schema
+
+	def _get_imitation_indices_long(self):
+		max_idx = self.df_imit_tensor.shape[0] - 1
+		return self.imitation_index.long().clamp(0, max_idx)
+
+	def _apply_play_retarget_angles(self):
+		"""Replay the current imitation frame into root state for visualization."""
+		schema = self._get_play_retarget_schema()
+		indices = self._get_imitation_indices_long()
+		# Keep x/y and optionally velocities synchronized with latest simulated state.
+		self.gym.refresh_actor_root_state_tensor(self.sim)
+		root_states = self.root_states
+		num_cols = self.df_imit_tensor.shape[1]
+		motion_state_min_cols = int(schema.get("motion_state_min_cols", 0))
+		has_motion_state = (motion_state_min_cols == 0) or (num_cols >= motion_state_min_cols)
+
+		height_ref = self.df_imit_tensor[indices, schema["height_col"]] + float(schema["height_offset"])
+		root_states[:, 2] = height_ref
+
+		if not schema.get("preserve_quat", False):
+			quat_start = schema["quat_start"]
+			quat_end = schema["quat_end"]
+			if quat_end <= num_cols and (quat_end - quat_start) == 4:
+				quat_ref = self.df_imit_tensor[indices, quat_start:quat_end]
+			elif schema.get("quat_fallback_identity", False):
+				quat_ref = torch.zeros(self.num_envs, 4, device=self.device, dtype=root_states.dtype)
+				quat_ref[:, 3] = 1.0
+			else:
+				raise ValueError(
+					f"Invalid quaternion slice [{quat_start}:{quat_end}] for imitation dataset with {num_cols} columns."
+				)
+			root_states[:, 3:7] = quat_ref
+
+		if not schema.get("preserve_lin_vel", False):
+			if schema["zero_lin_vel"] or not has_motion_state:
+				root_states[:, 7:10] = 0.0
+			else:
+				lin_vel_ref = self.df_imit_tensor[indices, schema["lin_vel_start"]:schema["lin_vel_end"]]
+				root_states[:, 7:10] = lin_vel_ref
+
+		if not schema.get("preserve_ang_vel", False):
+			if schema["zero_ang_vel"] or not has_motion_state:
+				root_states[:, 10:13] = 0.0
+			else:
+				ang_vel_ref = self.df_imit_tensor[indices, schema["ang_vel_start"]:schema["ang_vel_end"]]
+				root_states[:, 10:13] = ang_vel_ref
+
+		self.gym.set_actor_root_state_tensor(self.sim, gymtorch.unwrap_tensor(root_states))
+		self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques.contiguous()))
+
 	def post_physics_step(self):
 		""" check terminations, compute observations and rewards
 			calls self._post_physics_step_callback() for common computations 
@@ -259,11 +304,12 @@ class LeggedRobot(BaseTask):
 			self.default_base_pos = self.base_pos.clone()
 			# Compute default foot positions in body frame for standing pose
 			cur_footsteps_translated = self.foot_positions - self.base_pos.unsqueeze(1)
-			self.default_foot_pos_body_frame = torch.zeros(self.num_envs, 4, 3, device=self.device)
-			for i in range(4):
+			num_feet = self.foot_positions.shape[1]
+			self.default_foot_pos_body_frame = torch.zeros(self.num_envs, num_feet, 3, device=self.device)
+			for i in range(num_feet):
 				self.default_foot_pos_body_frame[:, i, :] = quat_apply_yaw(quat_conjugate(self.base_quat),
 																	  cur_footsteps_translated[:, i, :])
-			self.default_foot_pos_body_frame = self.default_foot_pos_body_frame.reshape(self.num_envs, 12)
+			self.default_foot_pos_body_frame = self.default_foot_pos_body_frame.reshape(self.num_envs, num_feet * 3)
 			# env_lower = gymapi.Vec3(0., 0., 0.)
 			# env_upper = gymapi.Vec3(0., 0., 0.)
 			# env_handle = self.gym.create_env(self.sim, env_lower, env_upper, 1)
@@ -635,46 +681,90 @@ class LeggedRobot(BaseTask):
 			heading = torch.atan2(forward[:, 1], forward[:, 0])
 			self.commands[:, 2] = torch.clip(0.5*wrap_to_pi(self.commands[:, 3] - heading), -1., 1.)
 
-		if self.cfg.terrain.measure_heights or self.cfg.terrain.measure_heights_priv:
+		if getattr(self.cfg.terrain, "measure_heights", False) or getattr(self.cfg.terrain, "measure_heights_priv", False):
 			self.measured_heights = self._get_heights()
 		if self.cfg.domain_rand.push_robots and  (self.common_step_counter % self.cfg.domain_rand.push_interval == 0):
 			self._push_robots()
 
 	def _sample_imitation_commands(self, env_ids):
-			# Only process if there are environments to resample
-			if len(env_ids) == 0:
-				return
-			
-			if self.cfg.asset.name == 'cassie': #Humanoid:
-				index_array = self.imitation_index[env_ids].detach().cpu().numpy().astype(int)
-				self.commands[env_ids, 0] = torch.tensor([self.df_imit.iloc[idx, 12] for idx in index_array], dtype=torch.float32, device=self.device)
-				self.commands[env_ids, 1] = torch.tensor([self.df_imit.iloc[idx, 13] for idx in index_array], dtype=torch.float32, device=self.device)
-				if self.cfg.commands.heading_command:
-					self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-				else:
-					self.commands[env_ids, 2] = torch.tensor([self.df_imit.iloc[idx, 14] for idx in index_array], dtype=torch.float32, device=self.device)
-			else:
-				index_array = self.imitation_index[env_ids].detach().cpu().numpy().astype(int)
-				# Add random offsets to imitation commands
-				# X velocity: add offset [-1.0, 1.0], clamped to [0.0, 3.0]
-				random_offset_x = torch_rand_float(-1.0, 1.0, (len(env_ids), 1), device=self.device).squeeze(1)
-				# Y velocity: add offset [-0.1, 0.1], clamped to [-0.1, 0.1]
-				random_offset_y = torch_rand_float(-0.1, 0.1, (len(env_ids), 1), device=self.device).squeeze(1)
-				
-				base_cmd_x = torch.tensor([self.df_imit.iloc[idx, 18] for idx in index_array], dtype=torch.float32, device=self.device)
-				base_cmd_y = torch.tensor([self.df_imit.iloc[idx, 19] for idx in index_array], dtype=torch.float32, device=self.device)
-				
-				self.commands[env_ids, 0] = torch.clamp(base_cmd_x + random_offset_x, 0.0, 3.0)
-				self.commands[env_ids, 1] = torch.clamp(base_cmd_y + random_offset_y, -0.1, 0.1)
-				
-				if self.cfg.commands.heading_command:
-					self.commands[env_ids, 3] = torch_rand_float(self.command_ranges["heading"][0], self.command_ranges["heading"][1], (len(env_ids), 1), device=self.device).squeeze(1)
-				else:
-					# Yaw command: randomly sample from [-1.5, 1.5]
-					self.commands[env_ids, 2] = torch_rand_float(self.command_ranges["ang_vel_yaw"][0], self.command_ranges["ang_vel_yaw"][1], (len(env_ids), 1), device=self.device).squeeze(1)
+		# Only process if there are environments to resample
+		if len(env_ids) == 0:
+			return
 
-				# set small commands to zero
-				self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.1).unsqueeze(1)
+		indices = self.imitation_index[env_ids].long()
+
+		if self.cfg.asset.name == 'cassie':  # Humanoid
+			if hasattr(self, "df_imit_tensor"):
+				cmd_x = self.df_imit_tensor[indices, 12]
+				cmd_y = self.df_imit_tensor[indices, 13]
+				cmd_yaw = self.df_imit_tensor[indices, 14]
+			else:
+				index_array = indices.detach().cpu().numpy().astype(int)
+				cmd_x = torch.as_tensor(
+					self.df_imit.iloc[index_array, 12].to_numpy(dtype=np.float32),
+					device=self.device,
+				)
+				cmd_y = torch.as_tensor(
+					self.df_imit.iloc[index_array, 13].to_numpy(dtype=np.float32),
+					device=self.device,
+				)
+				cmd_yaw = torch.as_tensor(
+					self.df_imit.iloc[index_array, 14].to_numpy(dtype=np.float32),
+					device=self.device,
+				)
+
+			self.commands[env_ids, 0] = cmd_x
+			self.commands[env_ids, 1] = cmd_y
+			if self.cfg.commands.heading_command:
+				self.commands[env_ids, 3] = torch_rand_float(
+					self.command_ranges["heading"][0],
+					self.command_ranges["heading"][1],
+					(len(env_ids), 1),
+					device=self.device,
+				).squeeze(1)
+			else:
+				self.commands[env_ids, 2] = cmd_yaw
+			return
+
+		# Add random offsets to imitation commands
+		random_offset_x = torch_rand_float(-1.0, 1.0, (len(env_ids), 1), device=self.device).squeeze(1)
+		random_offset_y = torch_rand_float(-0.1, 0.1, (len(env_ids), 1), device=self.device).squeeze(1)
+
+		if hasattr(self, "df_imit_tensor"):
+			base_cmd_x = self.df_imit_tensor[indices, 18]
+			base_cmd_y = self.df_imit_tensor[indices, 19]
+		else:
+			index_array = indices.detach().cpu().numpy().astype(int)
+			base_cmd_x = torch.as_tensor(
+				self.df_imit.iloc[index_array, 18].to_numpy(dtype=np.float32),
+				device=self.device,
+			)
+			base_cmd_y = torch.as_tensor(
+				self.df_imit.iloc[index_array, 19].to_numpy(dtype=np.float32),
+				device=self.device,
+			)
+
+		self.commands[env_ids, 0] = torch.clamp(base_cmd_x + random_offset_x, 0.0, 3.0)
+		self.commands[env_ids, 1] = torch.clamp(base_cmd_y + random_offset_y, -0.1, 0.1)
+
+		if self.cfg.commands.heading_command:
+			self.commands[env_ids, 3] = torch_rand_float(
+				self.command_ranges["heading"][0],
+				self.command_ranges["heading"][1],
+				(len(env_ids), 1),
+				device=self.device,
+			).squeeze(1)
+		else:
+			# Yaw command: randomly sample from [-1.5, 1.5]
+			self.commands[env_ids, 2] = torch_rand_float(
+				self.command_ranges["ang_vel_yaw"][0],
+				self.command_ranges["ang_vel_yaw"][1],
+				(len(env_ids), 1),
+				device=self.device,
+			).squeeze(1)
+
+		# set small commands to zero
+		self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.1).unsqueeze(1)
 
 	def _resample_commands(self, env_ids):
 		# print(env_ids)
@@ -949,7 +1039,7 @@ class LeggedRobot(BaseTask):
 
 		self.lag_buffer = [torch.zeros_like(self.dof_pos) for i in range(self.cfg.domain_rand.lag_timesteps+1)]
 		
-		if self.cfg.terrain.measure_heights or self.cfg.terrain.measure_heights_priv:
+		if getattr(self.cfg.terrain, "measure_heights", False) or getattr(self.cfg.terrain, "measure_heights_priv", False):
 			self.height_points = self._init_height_points()
 		self.measured_heights = 0
 

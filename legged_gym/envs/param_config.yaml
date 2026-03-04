@@ -18,8 +18,8 @@ action_scale: 0.25  #scaling for action commands
 
 num_envs: 4096
 control_decimation: 4
+episode_length: 20
 #For canter, trot, pace, amble gaits: 19, for all gait 32, for sidesteps and hopturn 3
-episode_length: 19  #TODO calculate in the robot file based on the csv
 reference_state_init: False
 
 rough_terrain: False
@@ -32,7 +32,7 @@ fine_tune: False
 
 # Current: Flat terrain (no phase/imitation in obs); critic includes imitation features → (42, 77)
 number_observations: 45
-number_privileged_observations: 77
+number_privileged_observations: 236
 
 # Alternatives:
 # Flat (base) (42, 48) | Flat+Phase (43, 49; if train_multi_skills=False, phase replaces skill indicator) | 
@@ -43,7 +43,7 @@ number_privileged_observations: 77
 # ============================================================================
 
 train_multi_skills: False
-path_to_imitation_data: "imitation_data/animal_mocap/go2_retarget_canter_2ms.csv"
+path_to_imitation_data: "imitation_data/others/imitation_h1_walking.csv"
 use_imitation_commands: True  #Whether to use imitation commands (speed, yaw rate) or not, if not can set commands in robot config file
 
 # Alternative imitation data files (check imitation data folder for more):
@@ -83,3 +83,5 @@ reward_group_num: 2
 # VISUALIZATION CONFIGURATION
 # ============================================================================
 visualize_imitation_data: True
+log_instantaneous_rmse: True
+rmse_log_interval: 100

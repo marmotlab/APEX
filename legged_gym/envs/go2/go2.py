@@ -1,5 +1,6 @@
 from time import time
 import numpy as np
+import math
 import os
 
 from isaacgym.torch_utils import *
@@ -95,21 +96,24 @@ class Go2(LeggedRobot):
 	def __init__(self, cfg, sim_params, physics_engine, sim_device, headless):
 		"""Initialize Go2 environment with preprocessed imitation data"""
 		# Load config parameters
+		self._imitation_index_long_cache = None
 		with open(f"legged_gym/envs/param_config.yaml", "r") as f:
 			config = yaml.load(f, Loader=yaml.FullLoader)
-			self.gamma_decap = config["gamma"]
-			self.k_decap = config["k"]
-			self.visualize_imitation_data = config["visualize_imitation_data"]
-			self.path_to_imitation_data = config["path_to_imitation_data"]
-			self.number_observations = config["number_observations"]
-			self.number_privileged_observations = config["number_privileged_observations"]
-			self.reference_state_init = config['reference_state_init']
-			self.decap_type = config["decap_type"]
-			self.cosine_constant_prior_iterations = config["constant_prior_iterations"]
-			self.cosine_decay_iterations = config["cosine_decay_iterations"]
-			self.sigma_imit_angles = config["sigma_imit_angles"]
-			self.sigma_imit_foot_pos = config["sigma_imit_foot_pos"]
-			self.train_multi_skills = config["train_multi_skills"]
+		self.gamma_decap = config["gamma"]
+		self.k_decap = config["k"]
+		self.visualize_imitation_data = config["visualize_imitation_data"]
+		self.path_to_imitation_data = config["path_to_imitation_data"]
+		self.number_observations = config["number_observations"]
+		self.number_privileged_observations = config["number_privileged_observations"]
+		self.reference_state_init = config['reference_state_init']
+		self.decap_type = config["decap_type"]
+		self.cosine_constant_prior_iterations = config["constant_prior_iterations"]
+		self.cosine_decay_iterations = config["cosine_decay_iterations"]
+		self.sigma_imit_angles = config["sigma_imit_angles"]
+		self.sigma_imit_foot_pos = config["sigma_imit_foot_pos"]
+		self.train_multi_skills = config["train_multi_skills"]
+		self.log_instantaneous_rmse = config.get("log_instantaneous_rmse", True)
+		self.rmse_log_interval = max(1, int(config.get("rmse_log_interval", 100)))
 		
 		# Call parent constructor
 		super().__init__(cfg, sim_params, physics_engine, sim_device, headless)
@@ -177,6 +181,11 @@ class Go2(LeggedRobot):
 		self.imit_joint_leg4 = self.df_imit_tensor[:, 15:18]      # columns 15-17: leg 4
 		
 		print(f"Preprocessed {self.df_imit_length} imitation data samples to GPU")
+
+	def _get_imitation_indices(self):
+		if self._imitation_index_long_cache is None:
+			return self.imitation_index.long()
+		return self._imitation_index_long_cache
 
 	def reset_idx(self, env_ids):
 		""" Reset some environments.
@@ -253,7 +262,7 @@ class Go2(LeggedRobot):
 			# self.dof_pos[env_ids] = self.default_dof_pos * torch_rand_float(0.0, 2.0, (len(env_ids), self.num_dof), device=self.device)
 		else:
 			#Convert to tensor - using preprocessed data
-			self.reference_state_angles = self.imit_joint_pos[self.imitation_index.long()]
+			self.reference_state_angles = self.imit_joint_pos[self._get_imitation_indices()]
 			self.dof_pos[env_ids] = self.reference_state_angles[env_ids] * torch_rand_float(0.5, 1.5, (len(env_ids), self.num_dof), device=self.device)
 		self.dof_vel[env_ids] = 0.
 
@@ -277,19 +286,20 @@ class Go2(LeggedRobot):
 		else:
 			self.root_states[env_ids] = self.base_init_state
 			self.root_states[env_ids, :3] += self.env_origins[env_ids]
+
 		# base velocities
 		if self.reference_state_init:
-			self.reference_velocity = self.imit_lin_vel[self.imitation_index.long()]
+			indices = self._get_imitation_indices()
+			self.reference_velocity = self.imit_lin_vel[indices]
 			self.root_states[env_ids, 7:13] = torch.cat([
 				self.reference_velocity[env_ids], 
-				self.imit_ang_vel[self.imitation_index.long()][env_ids]
+				self.imit_ang_vel[indices][env_ids]
 			], dim=1)  # [7:10]: lin vel, [10:13]: ang vel
 			self.root_states[env_ids, 7:13] = torch_rand_float(-0.5, 0.5, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
-			self.reference_state_height = self.imit_height[self.imitation_index.long()].squeeze(-1)
+			self.reference_state_height = self.imit_height[indices].squeeze(-1)
 			self.root_states[env_ids, 2] = self.reference_state_height[env_ids]  # [2]: height
-			self.reference_quaternions = self.imit_quaternions[self.imitation_index.long()]
+			self.reference_quaternions = self.imit_quaternions[indices]
 			self.root_states[env_ids, 3:7] = self.reference_quaternions[env_ids]  # [3:7]: quaternion
-
 		else:	
 			self.root_states[env_ids, 7:13] = torch_rand_float(-0.5, 0.5, (len(env_ids), 6), device=self.device) # [7:10]: lin vel, [10:13]: ang vel
 		env_ids_int32 = env_ids.to(dtype=torch.int32)
@@ -366,7 +376,7 @@ class Go2(LeggedRobot):
 	
 	def _check_imitation_termination(self):
 		""" Check termination conditions based on deviation from imitation data """
-		indices = self.imitation_index.long()
+		indices = self._get_imitation_indices()
 		termination_mask = torch.zeros(self.num_envs, dtype=torch.bool, device=self.device)
 		
 		# Get current termination thresholds (either from curriculum or static config)
@@ -520,42 +530,51 @@ class Go2(LeggedRobot):
 				[num_env, num_reward_groups (+1 if termination)], or in single–group mode, the overall reward tensor.
 		"""
 		if getattr(self.cfg.rewards, "multi_critic", False):
-			# MULTI-GROUP MODE
-			# Assume self.rew_buf is already allocated with shape [num_env, num_reward_groups]
-			# We'll compute a new tensor with the same shape.
-			group_names = [gn for gn in self.reward_scales.keys() if gn != "termination"]
-			num_groups = len(group_names)
-			# Create an empty tensor for computed rewards for each group.
-			computed_rewards = torch.zeros(self.num_envs, num_groups, dtype=torch.float, device=self.device)
+			computed_rewards = self._computed_group_rewards
+			computed_rewards.zero_()
+			group_reward = self._group_reward_accumulator
 
-			# Process each reward group (except "termination")
-			for idx, group_name in enumerate(group_names):
-				group_reward = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
-				# For each reward in the current group, accumulate its contribution.
+			# Process each reward group (except termination).
+			for idx, group_name in enumerate(self.reward_group_names):
+				group_reward.zero_()
+				group_reward_scales = self.reward_scales[group_name]
+				group_reward_functions = self.reward_functions[group_name]
+				group_episode_sums = self.episode_sums[group_name]
 				for reward_name in self.reward_names[group_name]:
-					r = self.reward_functions[group_name][reward_name]() * self.reward_scales[group_name][reward_name]
+					r = group_reward_functions[reward_name]() * group_reward_scales[reward_name]
 					group_reward += r
-					# Update episode sums for logging.
-					self.episode_sums[group_name][reward_name] += r
+					group_episode_sums[reward_name] += r
 				computed_rewards[:, idx] = group_reward
-			# If only positive rewards are allowed, clip the computed rewards.
+
 			if self.cfg.rewards.only_positive_rewards:
-				computed_rewards = torch.clamp(computed_rewards, min=0.)
+				computed_rewards.clamp_(min=0.)
 
 			# Handle termination reward if defined.
-			if "termination" in self.reward_scales:
+			if self._has_termination_reward:
 				term_rew = self._reward_termination() * self.reward_scales["termination"]
-				# Update termination episode sum.
 				if "termination" in self.episode_sums:
 					self.episode_sums["termination"] += term_rew
 				else:
 					self.episode_sums["termination"] = term_rew.clone()
-				term_rew = term_rew.unsqueeze(1)  # shape: [num_env, 1]
-				computed_rewards = torch.cat([computed_rewards, term_rew], dim=1)
 
-			# Copy the computed rewards into self.rew_buf.
-			self.rew_buf.copy_(computed_rewards)
-			return computed_rewards
+				if self._computed_rewards_with_termination is not None:
+					self._computed_rewards_with_termination[:, :-1].copy_(computed_rewards)
+					self._computed_rewards_with_termination[:, -1] = term_rew
+					self.rew_buf.copy_(self._computed_rewards_with_termination)
+					return self.rew_buf
+
+				rewards_with_termination = torch.cat([computed_rewards, term_rew.unsqueeze(1)], dim=1)
+				if self.rew_buf.shape == rewards_with_termination.shape:
+					self.rew_buf.copy_(rewards_with_termination)
+					return self.rew_buf
+				self.rew_buf = rewards_with_termination
+				return self.rew_buf
+
+			if self.rew_buf.shape == computed_rewards.shape:
+				self.rew_buf.copy_(computed_rewards)
+				return self.rew_buf
+			self.rew_buf = computed_rewards
+			return self.rew_buf
 		else:
 			# SINGLE-GROUP MODE (original logic)
 			self.rew_buf[:] = 0.
@@ -574,24 +593,21 @@ class Go2(LeggedRobot):
 			
 	def post_physics_step(self):
 		"""Override to add instantaneous RMSE error computation and logging to wandb"""
-		# Call parent method first
+		self._imitation_index_long_cache = self.imitation_index.long()
 		super().post_physics_step()
 		
 		# Compute instantaneous RMSE errors for imitation
-		if hasattr(self, 'imitation_index') and hasattr(self, 'df_imit'):
-			rmse_errors = self._compute_instantaneous_rmse_errors()
+		if self.log_instantaneous_rmse and hasattr(self, 'imitation_index') and hasattr(self, 'df_imit'):
+			if self.common_step_counter % self.rmse_log_interval == 0:
+				rmse_errors = self._compute_instantaneous_rmse_errors()
 			
-			# Add instantaneous RMSE errors to extras for immediate wandb logging
-			if "step" not in self.extras:
-				self.extras["step"] = {}
+				# Add instantaneous RMSE errors to extras for immediate wandb logging
+				if "step" not in self.extras:
+					self.extras["step"] = {}
 			
-			# Log instantaneous RMSE values at each step
-			for key, value in rmse_errors.items():
-				self.extras["step"][key] = value
-			
-			# Debug print for first few steps to verify logging is working
-			# if hasattr(self, 'common_step_counter') and self.common_step_counter % 1000 == 0 and self.common_step_counter < 10000:
-			# 	print(f"Step {self.common_step_counter} - Instantaneous RMSE: Joint={rmse_errors['instantaneous_joint_pos_rmse']:.4f}, Height={rmse_errors['instantaneous_imitation_height_rmse']:.4f}, EndEff={rmse_errors['instantaneous_end_effector_pos_rmse']:.4f}, Quat={rmse_errors['instantaneous_quaternion_rmse']:.4f}, LinVel={rmse_errors['instantaneous_lin_vel_tracking_rmse']:.4f}, AngVel={rmse_errors['instantaneous_ang_vel_tracking_rmse']:.4f}")
+				for key, value in rmse_errors.items():
+					self.extras["step"][key] = value
+		self._imitation_index_long_cache = None
 
 
 			
@@ -626,17 +642,27 @@ class Go2(LeggedRobot):
 					scale = group_scales[key]
 					if scale == 0:
 						continue
-					else:
-						# Multiply non-zero scales by dt.
-						valid_scales[key] = scale * self.dt
-						names.append(key)
-						# Expected function name: _reward_<group_name>_<key>
-						func_name = f"_reward_{key}"
-						functions[key] = getattr(self, func_name)
-				# Update the group's scales with only the valid ones.
+					# Multiply non-zero scales by dt.
+					valid_scales[key] = scale * self.dt
+					names.append(key)
+					func_name = f"_reward_{key}"
+					functions[key] = getattr(self, func_name)
+
 				self.reward_scales[group_name] = valid_scales
 				self.reward_names[group_name] = names
 				self.reward_functions[group_name] = functions
+
+			self.reward_group_names = [group_name for group_name in self.reward_scales.keys() if group_name != "termination"]
+			self._has_termination_reward = "termination" in self.reward_scales
+			self._computed_group_rewards = torch.zeros(
+				self.num_envs, len(self.reward_group_names), dtype=torch.float, device=self.device
+			)
+			self._group_reward_accumulator = torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
+			self._computed_rewards_with_termination = None
+			if self._has_termination_reward and self.rew_buf.dim() == 2 and self.rew_buf.shape[1] == len(self.reward_group_names) + 1:
+				self._computed_rewards_with_termination = torch.zeros(
+					self.num_envs, len(self.reward_group_names) + 1, dtype=torch.float, device=self.device
+				)
 
 			# Prepare episode sums as a nested dictionary per group.
 			self.episode_sums = {
@@ -648,6 +674,8 @@ class Go2(LeggedRobot):
 			}
 		else:
 			# SINGLE-GROUP MODE (original logic)
+			self.reward_group_names = []
+			self._has_termination_reward = "termination" in self.reward_scales
 			for key in list(self.reward_scales.keys()):
 				scale = self.reward_scales[key]
 				if scale == 0:
@@ -670,31 +698,34 @@ class Go2(LeggedRobot):
 
 	def _compute_decap_factor(self):
 		if self.decap_type == "exp":
-			self.decap_factor = self.gamma_decap**(self.torque_ref_decay_factor/self.k_decap)
-			return self.decap_factor 
+			return self.gamma_decap ** (self.torque_ref_decay_factor / self.k_decap)
 		elif self.decap_type == "cosine":
 			# Calculate the cosine decay factor based on the current iteration
 			if self.global_training_iteration < self.cosine_constant_prior_iterations:
 				#1.0 for the first cosine_constant_prior_iterations iterations with size equal to actions
-				self.decap_factor = 1.0
+				return 1.0
 			elif self.global_training_iteration < self.cosine_constant_prior_iterations + self.cosine_decay_iterations:
 				# Calculate the cosine decay factor
-				decay_factor = 0.5 * (1 + np.cos(
-					np.pi * (self.global_training_iteration - self.cosine_constant_prior_iterations) / self.cosine_decay_iterations))
-				self.decap_factor = decay_factor 
+				decay_factor = 0.5 * (
+					1.0
+					+ math.cos(
+						math.pi
+						* (self.global_training_iteration - self.cosine_constant_prior_iterations)
+						/ self.cosine_decay_iterations
+					)
+				)
+				return decay_factor
 			else:
 				#Zero otherwise
-				self.decap_factor = 0.0
-			return self.decap_factor
+				return 0.0
 		elif self.decap_type == 'discrete':
 			#Keep decap factor 1.0 for the first discrete_constant_prior_iterations, then half and then zero
 			if self.global_training_iteration < 500:
-				self.decap_factor = 1.0
+				return 1.0
 			elif self.global_training_iteration < 1000 and self.global_training_iteration >= 500:
-				self.decap_factor = 0.5
+				return 0.5
 			else:
-				self.decap_factor = 0.0
-			return self.decap_factor
+				return 0.0
 		else:
 			raise ValueError(f"Unknown decap type: {self.decap_type}")
 		
@@ -725,10 +756,10 @@ class Go2(LeggedRobot):
 		if self.cfg.control.limit_dof_pos:
 			actions_scaled = torch.clip(actions_scaled, -0.2, 0.2)
 
-		dof_imit_arr = self.imit_joint_pos[self.imitation_index.long()]
-		self.decap_factor = self._compute_decap_factor()
-		self.decap_factor = np.clip(self.decap_factor, 0.0, 1.0)
-		self.decap_factor = torch.full((self.num_envs, 1), self.decap_factor, device=self.device)
+		dof_imit_arr = self.imit_joint_pos[self._get_imitation_indices()]
+		decap_factor = float(self._compute_decap_factor())
+		decap_factor = max(0.0, min(1.0, decap_factor))
+		self.decap_factor.fill_(decap_factor)
 
 		if control_type == 'apex_position':
 			#Decap factor can empirically set as max (0.06, decap_factor) for more stable training after decay, can be removed without any major performance loss
@@ -806,7 +837,7 @@ class Go2(LeggedRobot):
 				),dim=-1)
 			
 		elif self.number_observations == 77:
-			indices = self.imitation_index.long()
+			indices = self._get_imitation_indices()
 			# Reference joint positions (12 values)
 			dof_imit_arr = self.imit_joint_pos[indices]
 			# Reference end effector positions (12 values) 
@@ -888,7 +919,7 @@ class Go2(LeggedRobot):
 						),dim=-1)
 		elif self.number_privileged_observations == 77:
 			# Get imitation data for current timestep - using preprocessed tensors
-			indices = self.imitation_index.long()
+			indices = self._get_imitation_indices()
 			# Reference joint positions (12 values)
 			dof_imit_arr = self.imit_joint_pos[indices]			
 			# Reference end effector positions (12 values) 
@@ -1060,7 +1091,7 @@ class Go2(LeggedRobot):
 	
 	def _compute_instantaneous_rmse_errors(self):
 		"""Compute instantaneous RMSE errors for joint positions, imitation height, end effector positions, velocity tracking, and quaternion orientation"""
-		indices = self.imitation_index.long()
+		indices = self._get_imitation_indices()
 		
 		# Joint position RMSE - using preprocessed data
 		dof_imit_arr = self.imit_joint_pos[indices]
@@ -1107,7 +1138,7 @@ class Go2(LeggedRobot):
 	
 	def _reward_imitation_angles(self):
 		# Use preprocessed imitation data
-		dof_imit_arr = self.imit_joint_pos[self.imitation_index.long()]
+		dof_imit_arr = self.imit_joint_pos[self._get_imitation_indices()]
 		
 		# When linear command is zero (standing still), use default_dof_pos instead
 		is_standing = torch.norm(self.commands[:, :2], dim=1) < 0.1  # [num_envs]
@@ -1119,7 +1150,7 @@ class Go2(LeggedRobot):
 	
 	def _reward_imitation_height(self):
 		# Use preprocessed imitation data
-		height = self.imit_height[self.imitation_index.long()].squeeze(-1)
+		height = self.imit_height[self._get_imitation_indices()].squeeze(-1)
 		base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
 		height_error = torch.square(base_height - height)
 		
@@ -1128,7 +1159,7 @@ class Go2(LeggedRobot):
 
 	def _reward_imitation_angles_indiv_legs(self):
 		# Use preprocessed imitation data - columns 6:18 split into 3 per leg
-		joint_pos_imit = self.imit_joint_pos[self.imitation_index.long()]
+		joint_pos_imit = self.imit_joint_pos[self._get_imitation_indices()]
 		
 		dof_imit_arr_leg1 = joint_pos_imit[:, 0:3]   # columns 6:9
 		dof_imit_arr_leg2 = joint_pos_imit[:, 3:6]   # columns 9:12
@@ -1145,21 +1176,21 @@ class Go2(LeggedRobot):
 
 	def _reward_imitation_lin_vel(self):
 		# Use preprocessed imitation data
-		lin_vel_imit_arr = self.imit_lin_vel[self.imitation_index.long()]
+		lin_vel_imit_arr = self.imit_lin_vel[self._get_imitation_indices()]
 		
 		lin_imit_error = torch.sum(torch.abs(self.base_lin_vel - lin_vel_imit_arr), dim=1)    
 		return torch.exp(-lin_imit_error/self.cfg.rewards.tracking_sigma)
 	
 	def _reward_imitation_ang_vel(self):
 		# Use preprocessed imitation data
-		ang_vel_imit_arr = self.imit_ang_vel[self.imitation_index.long()]
+		ang_vel_imit_arr = self.imit_ang_vel[self._get_imitation_indices()]
 		
 		lin_imit_error = torch.sum(torch.abs(self.base_ang_vel - ang_vel_imit_arr), dim=1)
 		return torch.exp(-lin_imit_error/self.cfg.rewards.tracking_sigma)
 	
 	def _reward_imitation_height_penalty(self):
 		# Use preprocessed imitation data
-		height = self.imit_height[self.imitation_index.long()].squeeze(-1)  # Only squeeze last dim
+		height = self.imit_height[self._get_imitation_indices()].squeeze(-1)  # Only squeeze last dim
 		
 		base_height = torch.mean(self.root_states[:, 2].unsqueeze(1) - self.measured_heights, dim=1)
 		
@@ -1180,7 +1211,7 @@ class Go2(LeggedRobot):
 	
 	def _reward_imitate_end_effector_pos(self):
 		# Use preprocessed imitation data
-		end_effector_ref = self.imit_end_effector[self.imitation_index.long()]
+		end_effector_ref = self.imit_end_effector[self._get_imitation_indices()]
 
 		# When linear command is zero (standing still), use default foot positions instead
 		is_standing = torch.norm(self.commands[:, :2], dim=1) < 0.1  # [num_envs]
@@ -1215,7 +1246,7 @@ class Go2(LeggedRobot):
 	
 	def _reward_imitate_base_end_effector_pos_world(self):
 		# Use preprocessed imitation data
-		end_effector_ref_wf = self.imit_end_effector_world[self.imitation_index.long()]
+		end_effector_ref_wf = self.imit_end_effector_world[self._get_imitation_indices()]
 
 		# Get translation offset from default base position
 		init_pos = self.default_base_pos.clone()
@@ -1240,10 +1271,10 @@ class Go2(LeggedRobot):
 		
 	def _reward_imitate_foot_height(self):
 		# Use preprocessed imitation data
-		end_effector_z1_ref = self.imit_foot_z1[self.imitation_index.long()]
-		end_effector_z2_ref = self.imit_foot_z2[self.imitation_index.long()]
-		end_effector_z3_ref = self.imit_foot_z3[self.imitation_index.long()]
-		end_effector_z4_ref = self.imit_foot_z4[self.imitation_index.long()]
+		end_effector_z1_ref = self.imit_foot_z1[self._get_imitation_indices()]
+		end_effector_z2_ref = self.imit_foot_z2[self._get_imitation_indices()]
+		end_effector_z3_ref = self.imit_foot_z3[self._get_imitation_indices()]
+		end_effector_z4_ref = self.imit_foot_z4[self._get_imitation_indices()]
 		
 		cur_foot_pos = self.foot_positions.reshape(self.num_envs, 12)
 		foot_height_error = torch.sum(torch.square(end_effector_z1_ref - cur_foot_pos[:,2].unsqueeze(1)), dim=1) \
@@ -1254,7 +1285,7 @@ class Go2(LeggedRobot):
 
 	def _reward_imitate_base_pos(self):
 		# Use preprocessed imitation data
-		base_pos_ref = self.imit_base_pos[self.imitation_index.long()]
+		base_pos_ref = self.imit_base_pos[self._get_imitation_indices()]
 
 		#Add the initial base position to convert to world frame of each robot
 		base_pos_ref = base_pos_ref + self.default_base_pos[:,0:2]
@@ -1265,21 +1296,21 @@ class Go2(LeggedRobot):
 
 	def _reward_imitate_quat(self):
 		# Use preprocessed imitation data
-		quat_ref = self.imit_quaternions[self.imitation_index.long()]
+		quat_ref = self.imit_quaternions[self._get_imitation_indices()]
 
 		quat_error = torch.sum(torch.square(quat_ref - self.base_quat), dim=1)
 		return torch.exp(-quat_error/0.5)
 	
 	def _reward_imitate_quat_penalty(self):
 		# Use preprocessed imitation data
-		quat_ref = self.imit_quaternions[self.imitation_index.long()]
+		quat_ref = self.imit_quaternions[self._get_imitation_indices()]
 
 		quat_error = torch.sum(torch.square(quat_ref - self.base_quat), dim=1)
 		return quat_error
 
 	def _reward_imitate_joint_vel(self):
 		# Use preprocessed imitation data
-		dof_imit_arr = self.imit_joint_vel[self.imitation_index.long()]
+		dof_imit_arr = self.imit_joint_vel[self._get_imitation_indices()]
 		
 		#Reward for tracking joint velocities
 		dof_imit_error = torch.sum(torch.square(self.dof_vel - dof_imit_arr)*self.obs_scales.dof_vel, dim=1)
@@ -1317,10 +1348,10 @@ class Go2(LeggedRobot):
 
 	def _reward_penalty_foot_dragging(self, clearance_ratio=0.8):
 		# Use preprocessed imitation data
-		end_effector_z1_ref = self.imit_foot_z1[self.imitation_index.long()].squeeze(-1)
-		end_effector_z2_ref = self.imit_foot_z2[self.imitation_index.long()].squeeze(-1)
-		end_effector_z3_ref = self.imit_foot_z3[self.imitation_index.long()].squeeze(-1)
-		end_effector_z4_ref = self.imit_foot_z4[self.imitation_index.long()].squeeze(-1)
+		end_effector_z1_ref = self.imit_foot_z1[self._get_imitation_indices()].squeeze(-1)
+		end_effector_z2_ref = self.imit_foot_z2[self._get_imitation_indices()].squeeze(-1)
+		end_effector_z3_ref = self.imit_foot_z3[self._get_imitation_indices()].squeeze(-1)
+		end_effector_z4_ref = self.imit_foot_z4[self._get_imitation_indices()].squeeze(-1)
 
 		end_effector_refs = torch.stack([
 			end_effector_z1_ref, end_effector_z2_ref, end_effector_z3_ref, end_effector_z4_ref
