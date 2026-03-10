@@ -32,7 +32,7 @@ fine_tune: False
 
 # Current: Flat terrain (no phase/imitation in obs); critic includes imitation features → (42, 77)
 number_observations: 45
-number_privileged_observations: 236
+number_privileged_observations: 77
 
 # Alternatives:
 # Flat (base) (42, 48) | Flat+Phase (43, 49; if train_multi_skills=False, phase replaces skill indicator) | 
@@ -43,7 +43,7 @@ number_privileged_observations: 236
 # ============================================================================
 
 train_multi_skills: False
-path_to_imitation_data: "imitation_data/others/imitation_h1_walking.csv"
+path_to_imitation_data: "imitation_data/animal_mocap/go2_retarget_canter_2ms.csv"
 use_imitation_commands: True  #Whether to use imitation commands (speed, yaw rate) or not, if not can set commands in robot config file
 
 # Alternative imitation data files (check imitation data folder for more):
