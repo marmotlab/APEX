@@ -14,6 +14,7 @@ with open(f"legged_gym/envs/param_config.yaml", "r") as f:
 	fine_tune = config['fine_tune']
 	number_observations = config['number_observations']
 	number_privileged_obs = config['number_privileged_observations']
+	use_imitation_commands = config.get('use_imitation_commands', False)
 
 class H1RoughCfg( LeggedRobotCfg ):
 
@@ -46,7 +47,7 @@ class H1RoughCfg( LeggedRobotCfg ):
 		resampling_time = 10.  # time before command are changed[s]
 		use_heading = False
 		heading_command = False
-		use_imitation_commands = False
+		use_imitation_commands = use_imitation_commands
 		class ranges:
 			lin_vel_x = [0.4, 0.8] # min max [m/s]
 			lin_vel_y = [0.0, 0.0]   # min max [m/s]
@@ -94,13 +95,13 @@ class H1RoughCfg( LeggedRobotCfg ):
 
 	class domain_rand(LeggedRobotCfg.domain_rand):
 		randomize_friction = True
-		friction_range = [0.1, 1.25]
+		friction_range = [0.5, 1.25]
 		randomize_base_mass = True
 		added_mass_range = [-1., 1.]
 		push_robots = True
-		push_interval_s = 5
-		max_push_vel_xy = 1.5
-		max_push_vel_ang = 0.2
+		push_interval_s = 8
+		max_push_vel_xy = 0.5
+		max_push_vel_ang = 0.3
 		randomize_lag_timesteps = False
 		lag_timesteps = 6
 		randomize_motor_offset = False
@@ -159,7 +160,7 @@ class H1RoughCfg( LeggedRobotCfg ):
 		class scales( LeggedRobotCfg.rewards.scales ):
 			if multi_critic:				
 				class group1:
-					imitation_height_penalty = -30.0
+					imitation_height_penalty = -10.0
 					imitation_angles = 3.0
 					imitate_end_effector_pos = 3.0
 					imitate_joint_vel = 0.0
@@ -178,14 +179,14 @@ class H1RoughCfg( LeggedRobotCfg ):
 					feet_air_time = 0.0
 					collision = -1.0
 					action_rate = -0.01
-					torques = 0.0
+					torques = -0.00001
 					dof_pos_limits = -5.0
 					alive = 0.15
 					hip_pos = -0.0
 					contact_no_vel = 0.0
 					feet_swing_height = -20.0
 					contact_no_vel = -0.2
-					feet_slip = -0.0
+					feet_slip = -0.04
 					
 					#Imitation Rewards
 					# imitation_angles = 15.0
@@ -219,15 +220,15 @@ class H1RoughCfg( LeggedRobotCfg ):
 				imitation_height_penalty = -40.0
 
 class H1RoughCfgPPO( LeggedRobotCfgPPO ):
-	class policy:
-		init_noise_std = 0.8
-		actor_hidden_dims = [32]
-		critic_hidden_dims = [32]
-		activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
-		# only for 'ActorCriticRecurrent':
-		rnn_type = 'lstm'
-		rnn_hidden_size = 64
-		rnn_num_layers = 1
+	# class policy:
+	# 	init_noise_std = 1.0
+	# 	actor_hidden_dims = [32]
+	# 	critic_hidden_dims = [32]
+	# 	activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
+	# 	# only for 'ActorCriticRecurrent':
+	# 	rnn_type = 'lstm'
+	# 	rnn_hidden_size = 64
+	# 	rnn_num_layers = 1
 	class algorithm( LeggedRobotCfgPPO.algorithm ):
 		entropy_coef = 0.01
 	class runner( LeggedRobotCfgPPO.runner ):

@@ -29,17 +29,36 @@ with open(f"legged_gym/envs/param_config.yaml", "r") as f:
 class H1Robot(LeggedRobot):
 	def _cache_imitation_tensors(self):
 		# H1 dataset layout:
-		# 0:10 joint targets, 10 height, 11:17 end-effector body-frame positions.
+		# 0:10 joint targets, 10 height, 11:17 end-effector body-frame positions,
+		# 17:21 optional root quaternion, 21:24 optional body-frame velocity command.
 		self.imit_joint_pos = self.df_imit_tensor[:, 0:10]
 		self.imit_height = self.df_imit_tensor[:, 10:11]
 		self.imit_end_effector = self.df_imit_tensor[:, 11:17]
 		self.imit_foot_z1 = self.df_imit_tensor[:, 11:12]
 		self.imit_foot_z2 = self.df_imit_tensor[:, 16:17]
+		self.imit_commands = self.df_imit_tensor[:, 21:24] if self.df_imit_tensor.shape[1] >= 24 else None
+		self._warned_missing_imitation_commands = False
 
 	def _get_imitation_indices(self):
 		if self._imitation_index_long_cache is None:
 			return self._get_imitation_indices_long()
 		return self._imitation_index_long_cache
+
+	def _sample_imitation_commands(self, env_ids):
+		if len(env_ids) == 0:
+			return
+		if self.imit_commands is None:
+			if not self._warned_missing_imitation_commands:
+				print(
+					"H1 imitation commands requested, but the imitation CSV has no columns 21:24. "
+					"Falling back to random command sampling."
+				)
+				self._warned_missing_imitation_commands = True
+			self._resample_commands(env_ids)
+			return
+
+		indices = self.imitation_index[env_ids].long().clamp(0, self.imit_commands.shape[0] - 1)
+		self.commands[env_ids, :3] = self.imit_commands[indices]
 
 	def post_physics_step(self):
 		self._imitation_index_long_cache = self._get_imitation_indices_long()
@@ -436,7 +455,11 @@ class H1Robot(LeggedRobot):
 		self.phase_right = (self.phase + offset) % 1
 		self.leg_phase = torch.cat([self.phase_left.unsqueeze(1), self.phase_right.unsqueeze(1)], dim=-1)
 		
-		return super()._post_physics_step_callback()
+		result = super()._post_physics_step_callback()
+		if self.cfg.commands.use_imitation_commands:
+			all_env_ids = torch.arange(self.num_envs, device=self.device)
+			self._sample_imitation_commands(all_env_ids)
+		return result
 	
 	
 	def compute_observations(self):
