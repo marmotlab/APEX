@@ -55,6 +55,7 @@ with open(f"legged_gym/envs/param_config.yaml", "r") as f:
 	config = yaml.load(f, Loader=yaml.FullLoader)
 	path_to_imitation_data = config["path_to_imitation_data"]
 	reference_state_init = config["reference_state_init"]
+	randomize_imitation_commands = config.get("randomize_imitation_commands", True)
 
 class LeggedRobot(BaseTask):
 	def __init__(self, cfg: LeggedRobotCfg, sim_params, physics_engine, sim_device, headless):
@@ -691,7 +692,7 @@ class LeggedRobot(BaseTask):
 		if len(env_ids) == 0:
 			return
 
-		indices = self.imitation_index[env_ids].long()
+		indices = self.imitation_index[env_ids].long().clamp(0, self.df_imit_tensor.shape[0] - 1)
 
 		if self.cfg.asset.name == 'cassie':  # Humanoid
 			if hasattr(self, "df_imit_tensor"):
@@ -726,13 +727,10 @@ class LeggedRobot(BaseTask):
 				self.commands[env_ids, 2] = cmd_yaw
 			return
 
-		# Add random offsets to imitation commands
-		random_offset_x = torch_rand_float(-1.0, 1.0, (len(env_ids), 1), device=self.device).squeeze(1)
-		random_offset_y = torch_rand_float(-0.1, 0.1, (len(env_ids), 1), device=self.device).squeeze(1)
-
 		if hasattr(self, "df_imit_tensor"):
 			base_cmd_x = self.df_imit_tensor[indices, 18]
 			base_cmd_y = self.df_imit_tensor[indices, 19]
+			base_cmd_yaw = self.df_imit_tensor[indices, 20] if self.df_imit_tensor.shape[1] > 20 else None
 		else:
 			index_array = indices.detach().cpu().numpy().astype(int)
 			base_cmd_x = torch.as_tensor(
@@ -743,9 +741,23 @@ class LeggedRobot(BaseTask):
 				self.df_imit.iloc[index_array, 19].to_numpy(dtype=np.float32),
 				device=self.device,
 			)
+			base_cmd_yaw = (
+				torch.as_tensor(
+					self.df_imit.iloc[index_array, 20].to_numpy(dtype=np.float32),
+					device=self.device,
+				)
+				if self.df_imit.shape[1] > 20
+				else None
+			)
 
-		self.commands[env_ids, 0] = torch.clamp(base_cmd_x + random_offset_x, 0.0, 3.0)
-		self.commands[env_ids, 1] = torch.clamp(base_cmd_y + random_offset_y, -0.1, 0.1)
+		if randomize_imitation_commands:
+			random_offset_x = torch_rand_float(-1.0, 1.0, (len(env_ids), 1), device=self.device).squeeze(1)
+			random_offset_y = torch_rand_float(-0.1, 0.1, (len(env_ids), 1), device=self.device).squeeze(1)
+			self.commands[env_ids, 0] = torch.clamp(base_cmd_x + random_offset_x, 0.0, 3.0)
+			self.commands[env_ids, 1] = torch.clamp(base_cmd_y + random_offset_y, -0.1, 0.1)
+		else:
+			self.commands[env_ids, 0] = base_cmd_x
+			self.commands[env_ids, 1] = base_cmd_y
 
 		if self.cfg.commands.heading_command:
 			self.commands[env_ids, 3] = torch_rand_float(
@@ -755,16 +767,22 @@ class LeggedRobot(BaseTask):
 				device=self.device,
 			).squeeze(1)
 		else:
-			# Yaw command: randomly sample from [-1.5, 1.5]
-			self.commands[env_ids, 2] = torch_rand_float(
-				self.command_ranges["ang_vel_yaw"][0],
-				self.command_ranges["ang_vel_yaw"][1],
-				(len(env_ids), 1),
-				device=self.device,
-			).squeeze(1)
+			if randomize_imitation_commands or base_cmd_yaw is None:
+				if randomize_imitation_commands:
+					self.commands[env_ids, 2] = torch_rand_float(
+						self.command_ranges["ang_vel_yaw"][0],
+						self.command_ranges["ang_vel_yaw"][1],
+						(len(env_ids), 1),
+						device=self.device,
+					).squeeze(1)
+				else:
+					self.commands[env_ids, 2] = 0.0
+			else:
+				self.commands[env_ids, 2] = base_cmd_yaw
 
-		# set small commands to zero
-		self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.1).unsqueeze(1)
+		if randomize_imitation_commands:
+			# set small commands to zero
+			self.commands[env_ids, :2] *= (torch.norm(self.commands[env_ids, :2], dim=1) > 0.1).unsqueeze(1)
 
 	def _resample_commands(self, env_ids):
 		# print(env_ids)

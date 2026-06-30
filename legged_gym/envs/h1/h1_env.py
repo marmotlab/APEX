@@ -87,8 +87,14 @@ class H1Robot(LeggedRobot):
 		# reset robot states
 		self._reset_dofs(env_ids)
 		self._reset_root_states(env_ids)
+		self._randomize_dof_props(env_ids, self.cfg)
 
 		if self.cfg.commands.use_imitation_commands:
+			# Keep reset observations consistent with the start of the new
+			# imitation episode before sampling command targets. H1
+			# reference_state_init needs a separate reset-index cleanup.
+			if not reference_state_init:
+				self.imitation_index[env_ids] = 0
 			self._sample_imitation_commands(env_ids)
 		
 		else:
@@ -456,7 +462,7 @@ class H1Robot(LeggedRobot):
 		self.leg_phase = torch.cat([self.phase_left.unsqueeze(1), self.phase_right.unsqueeze(1)], dim=-1)
 		
 		result = super()._post_physics_step_callback()
-		if self.cfg.commands.use_imitation_commands:
+		if self.cfg.commands.use_imitation_commands and self.imit_commands is not None:
 			all_env_ids = torch.arange(self.num_envs, device=self.device)
 			self._sample_imitation_commands(all_env_ids)
 		return result

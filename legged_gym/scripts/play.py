@@ -32,7 +32,9 @@ from legged_gym import LEGGED_GYM_ROOT_DIR
 import os
 
 import isaacgym
+from isaacgym.torch_utils import quat_conjugate
 from legged_gym.envs import *
+from legged_gym.utils.math import quat_apply_yaw
 from legged_gym.utils import  get_args, export_policy_as_jit, task_registry, Logger
 
 import numpy as np
@@ -60,6 +62,17 @@ def play(args):
     env_cfg.noise.add_noise = False
     env_cfg.domain_rand.randomize_friction = False
     env_cfg.domain_rand.push_robots = False
+    for attr in (
+        "randomize_base_mass",
+        "randomize_link_mass",
+        "randomize_motor_offset",
+        "randomize_motor_strength",
+        "randomize_Kp_factor",
+        "randomize_Kd_factor",
+        "randomize_lag_timesteps",
+    ):
+        if hasattr(env_cfg.domain_rand, attr):
+            setattr(env_cfg.domain_rand, attr, False)
 
     # prepare environment
     env, _ = task_registry.make_env(name=args.task, args=args, env_cfg=env_cfg)
@@ -152,36 +165,49 @@ def play(args):
 
         if LOG_IMITATION_ERROR:
             #print the average error between imitation angles and actual angles
-            if i> 100:
+            if i> 100 and not bool(dones[robot_index].item()):
+                imit_idx = int(env.imitation_index[robot_index].item()) - 1
+                imit_idx = max(0, min(imit_idx, len(df_imit) - 1))
                 dof_pos = env.dof_pos[robot_index, :].detach().cpu().numpy()
-                dof_pos_imit = df_imit.iloc[FF_counter, 6:18].values
+                dof_pos_imit = df_imit.iloc[imit_idx, 6:18].to_numpy(dtype=np.float32)
                 error_angles = np.square(np.abs(dof_pos - dof_pos_imit))
                 # print("ERROR", error)
                 error_angles_array.append(error_angles)
 
                 #Next, calculate the average error between commanded velocity and actual velocity
                 base_vel = env.base_lin_vel[robot_index, 0].detach().cpu().numpy()
-                base_vel_command = obs[robot_index, 3].detach().cpu().numpy()/2.0
+                base_vel_command = env.commands[robot_index, 0].detach().cpu().numpy()
                 error_velocity = np.square(np.abs(base_vel - base_vel_command))
                 error_velocity_tracking.append(error_velocity)
 
                 #Error in height
-                height_imit = df_imit.iloc[FF_counter, 21]
+                height_imit = df_imit.iloc[imit_idx, 21]
                 height = env.root_states[robot_index, 2].detach().cpu().numpy()
                 error_height.append(np.square(np.abs(height - height_imit)))
 
-
+                # End-effector position error in the same yaw-only body frame used by Go2 rewards.
+                end_effector_imit = df_imit.iloc[imit_idx, 22:34].to_numpy(dtype=np.float32)
+                cur_footsteps_translated = env.foot_positions[robot_index] - env.base_pos[robot_index].unsqueeze(0)
+                inverse_base_yaw = quat_conjugate(env.base_quat[robot_index].unsqueeze(0)).repeat(
+                    cur_footsteps_translated.shape[0], 1
+                )
+                end_effector_pos = quat_apply_yaw(inverse_base_yaw, cur_footsteps_translated).reshape(-1)
+                end_effector_pos = end_effector_pos.detach().cpu().numpy()
+                error_ee_pos.append(np.square(np.abs(end_effector_pos - end_effector_imit)))
 
             #Average square error of imitation angles after each episode
             if i%env.max_episode_length == 0 and i>0:
-                avg_error_angles = np.sqrt(np.mean(error_angles_array))
-                avg_error_velocity = np.sqrt(np.mean(error_velocity_tracking))
-                avg_error_height = np.sqrt(np.mean(error_height))
+                if error_angles_array:
+                    avg_error_angles = np.sqrt(np.mean(error_angles_array))
+                    avg_error_velocity = np.sqrt(np.mean(error_velocity_tracking))
+                    avg_error_height = np.sqrt(np.mean(error_height))
+                    avg_error_ee_pos = np.sqrt(np.mean(error_ee_pos))
 
 
-                print("Average Error Angles", avg_error_angles)
-                print("Average Error Velocity", avg_error_velocity)
-                print("Average Error Height", avg_error_height)
+                    print("Average Error Angles", avg_error_angles)
+                    print("Average Error Velocity", avg_error_velocity)
+                    print("Average Error Height", avg_error_height)
+                    print("Average Error End Effector", avg_error_ee_pos)
 
                 error_angles_array = []
                 error_velocity_tracking = []

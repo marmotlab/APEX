@@ -100,8 +100,8 @@ class H1RoughCfg( LeggedRobotCfg ):
 		added_mass_range = [-1., 1.]
 		push_robots = True
 		push_interval_s = 8
-		max_push_vel_xy = 0.5
-		max_push_vel_ang = 0.3
+		max_push_vel_xy = 0.15
+		max_push_vel_ang = 0.05
 		randomize_lag_timesteps = False
 		lag_timesteps = 6
 		randomize_motor_offset = False
@@ -220,15 +220,7 @@ class H1RoughCfg( LeggedRobotCfg ):
 				imitation_height_penalty = -40.0
 
 class H1RoughCfgPPO( LeggedRobotCfgPPO ):
-	# class policy:
-	# 	init_noise_std = 1.0
-	# 	actor_hidden_dims = [32]
-	# 	critic_hidden_dims = [32]
-	# 	activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
-	# 	# only for 'ActorCriticRecurrent':
-	# 	rnn_type = 'lstm'
-	# 	rnn_hidden_size = 64
-	# 	rnn_num_layers = 1
+	seed = 39
 	class algorithm( LeggedRobotCfgPPO.algorithm ):
 		entropy_coef = 0.01
 	class runner( LeggedRobotCfgPPO.runner ):
