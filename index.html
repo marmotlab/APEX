@@ -22,23 +22,19 @@
     gtag('config', 'G-PYVRSFMDRL');
   </script>
 
-  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" href="./static/images/video-posters/apex_canter_atheltics_ground.webp" as="image" fetchpriority="high">
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans:400,700|Noto+Sans:400,700&amp;display=swap"
         rel="stylesheet">
 
   <link rel="stylesheet" href="./static/css/bulma.min.css">
   <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
-  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
-  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
-  <link rel="stylesheet"
-        href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
   <link rel="stylesheet" href="./static/css/index.css">
   <link rel="icon" href="./static/images/dog-png-30.png">
 
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-  <script defer src="./static/js/fontawesome.all.min.js"></script>
-  <script src="./static/js/bulma-carousel.min.js"></script>
-  <script src="./static/js/bulma-slider.min.js"></script>
-  <script src="./static/js/index.js"></script>
+  <script defer src="./static/js/bulma-carousel.min.js"></script>
+  <script defer src="./static/js/index.js"></script>
 </head>
 <body>
 
@@ -73,8 +69,8 @@
     </header>
   </div>
   <!-- Background video -->
-  <video autoplay loop muted playsinline preload="auto"
-  style=" position: relative; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; background: #000; opacity: 0.85; z-index: 2; pointer-events: none;">
+  <video data-autoplay loop muted playsinline preload="none" width="1920" height="1080" poster="./static/images/video-posters/apex_canter_atheltics_ground.webp" aria-hidden="true"
+  style=" position: relative; top: 0; left: 0; width: 100%; height: 100vh; object-fit: cover; background: #000; opacity: 0.85; z-index: 2; pointer-events: none;">
     <source src="./static/videos/apex_canter_atheltics_ground.mp4" type="video/mp4">
   </video>
   <!-- Centered text on top of video -->
@@ -168,6 +164,11 @@
             <span class="author-block"><sup>3</sup>Korea University</span>
           </div>
 
+          <div class="publication-venue">
+            <p class="publication-venue-name">IROS 2026</p>
+            <p class="publication-venue-description">IEEE/RSJ International Conference on Intelligent Robots and Systems</p>
+          </div>
+
           <div class="column has-text-centered">
             <div class="publication-links">
               <!-- PDF Link. -->
@@ -175,7 +176,7 @@
                 <a href="https://arxiv.org/pdf/2505.10022"
                    class="external-link button is-normal is-rounded is-dark">
                   <span class="icon">
-                      <i class="fas fa-file-pdf"></i>
+                      <img src="./static/images/pdf.svg" alt="" width="20" height="20">
                   </span>
                   <span>Paper</span>
                 </a>
@@ -184,7 +185,7 @@
                 <a href="https://arxiv.org/abs/2505.10022"
                    class="external-link button is-normal is-rounded is-dark">
                   <span class="icon">
-                      <i class="ai ai-arxiv"></i>
+                      <img src="./static/images/arxiv-logomark-small.svg" alt="" width="20" height="20">
                   </span>
                   <span>arXiv</span>
                 </a>
@@ -204,7 +205,7 @@
                 <a href="https://github.com/marmotlab/APEX"
                    class="external-link button is-normal is-rounded is-dark">
                   <span class="icon">
-                      <i class="fab fa-github"></i>
+                      <img src="./static/images/github-mark.svg" alt="" width="20" height="20">
                   </span>
                   <span>Code</span>
                   </a>
@@ -258,7 +259,7 @@
     <!-- Gump Metaphor Figure -->
     <div class="box" style="background-color: #f9f9f9; max-width: 900px; margin: 0 auto;">
       <div class="has-text-centered">
-        <img src="./static/images/gump_metaphor.png" alt="APEX Decaying Action Priors Metaphor" style="width: 100%; border-radius: 8px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
+        <img loading="lazy" decoding="async" width="1487" height="917" src="./static/images/gump_metaphor.png" alt="APEX Decaying Action Priors Metaphor" style="width: 100%; border-radius: 8px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
       </div>
       <p class="has-text-justified mt-4" style="color: #555; font-size: 0.9rem; padding: 0 1rem;">
         <strong>Illustration of APEX's decaying action priors:</strong> Like the braces that stabilize early motion before breaking away, the priors guide exploration at the start of training and fade to zero, enabling a pure RL policy that runs independently at deployment. <em>Images inspired by Forrest Gump (1994).</em>
@@ -276,8 +277,8 @@
         <div class="box" style="height: 100%;">
           <h3 class="subtitle is-5 has-text-centered mb-4">Multiple gaits with a single policy</h3>
           <div class="has-text-centered">
-            <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 8px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
-              <source src="./static/videos/gait_change_apex.mp4" type="video/mp4">
+            <video data-autoplay preload="none" loading="lazy" width="960" height="540" poster="./static/images/video-posters/Apex_all_gait.webp" loop muted playsinline controls style="width: 100%; border-radius: 8px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
+              <source src="./static/videos/Apex_all_gait.mp4?v=3" type="video/mp4">
             </video>
           </div>
         </div>
@@ -287,7 +288,7 @@
         <div class="box" style="height: 100%;">
           <h3 class="subtitle is-5 has-text-centered mb-4">Highest recorded speed: <span style="font-weight: bold; color: #21a366;">3.39 m/s</span></h3>
           <div class="has-text-centered">
-            <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 8px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
+            <video data-autoplay preload="none" loading="lazy" width="1920" height="1080" poster="./static/images/video-posters/apex_canter_atheltics_ground.webp" loop muted playsinline controls style="width: 100%; border-radius: 8px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
               <source src="./static/videos/apex_canter_atheltics_ground.mp4" type="video/mp4">
             </video>
           </div>
@@ -310,7 +311,7 @@
           <div class="card" style="box-shadow: 0 2px 8px rgba(33,163,102,0.15); border-radius: 8px;">
             <div class="card-image">
               <figure class="image">
-                <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 8px 8px 0 0;">
+                <video data-autoplay preload="none" loading="lazy" width="1920" height="1080" poster="./static/images/video-posters/stairs_apex.webp" loop muted playsinline controls style="width: 100%; border-radius: 8px 8px 0 0;">
                   <source src="./static/videos/stairs_apex.mp4" type="video/mp4">
                 </video>
               </figure>
@@ -324,7 +325,7 @@
           <div class="card" style="box-shadow: 0 2px 8px rgba(33,163,102,0.15); border-radius: 8px;">
             <div class="card-image">
               <figure class="image">
-                <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 8px 8px 0 0;">
+                <video data-autoplay preload="none" loading="lazy" width="1920" height="1080" poster="./static/images/video-posters/slope_apex_1.webp" loop muted playsinline controls style="width: 100%; border-radius: 8px 8px 0 0;">
                   <source src="./static/videos/slope_apex_1.mp4" type="video/mp4">
                 </video>
               </figure>
@@ -338,7 +339,7 @@
           <div class="card" style="box-shadow: 0 2px 8px rgba(33,163,102,0.15); border-radius: 8px;">
             <div class="card-image">
               <figure class="image">
-                <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 8px 8px 0 0;">
+                <video data-autoplay preload="none" loading="lazy" width="1920" height="1080" poster="./static/images/video-posters/slope_apex_2.webp" loop muted playsinline controls style="width: 100%; border-radius: 8px 8px 0 0;">
                   <source src="./static/videos/slope_apex_2.mp4" type="video/mp4">
                 </video>
               </figure>
@@ -359,7 +360,7 @@
           <div class="card" style="box-shadow: 0 2px 8px rgba(33,163,102,0.15); border-radius: 8px;">
             <div class="card-image">
               <figure class="image">
-                <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 8px 8px 0 0;">
+                <video data-autoplay preload="none" loading="lazy" width="1920" height="1080" poster="./static/images/video-posters/rough_apex_1.webp" loop muted playsinline controls style="width: 100%; border-radius: 8px 8px 0 0;">
                   <source src="./static/videos/rough_apex_1.mp4" type="video/mp4">
                 </video>
               </figure>
@@ -373,7 +374,7 @@
           <div class="card" style="box-shadow: 0 2px 8px rgba(33,163,102,0.15); border-radius: 8px;">
             <div class="card-image">
               <figure class="image">
-                <video autoplay loop muted playsinline controls style="width: 100%; border-radius: 8px 8px 0 0;">
+                <video data-autoplay preload="none" loading="lazy" width="1920" height="1080" poster="./static/images/video-posters/rough_apex_2.webp" loop muted playsinline controls style="width: 100%; border-radius: 8px 8px 0 0;">
                   <source src="./static/videos/rough_apex_2.mp4" type="video/mp4">
                 </video>
               </figure>
@@ -453,7 +454,7 @@
         <div class="box" style="height: 100%;">
           <h3 class="title is-5 has-text-centered mb-4">APEX vs DeepMimic (DM) Reward Comparison</h3>
           <div class="has-text-centered">
-            <img src="./static/images/APEXvsDM_Rew.png" alt="APEX vs DM Reward Comparison" style="width: 100%; border-radius: 8px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
+            <img loading="lazy" decoding="async" width="1199" height="778" src="./static/images/APEXvsDM_Rew.png" alt="APEX vs DM Reward Comparison" style="width: 100%; border-radius: 8px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
           </div>
           <p class="has-text-justified mt-4" style="color: #555; font-size: 0.9rem;">
             General trend of rewards averaged across seeds for the trot motion. APEX-Full achieves faster convergence than DM-Full, while APEX outperforms DM-NIA without requiring imitation references during deployment. The same trend is observed across other motions.
@@ -466,7 +467,7 @@
     <div class="box" style="background-color: #ffffff;">
       <h3 class="title is-5 has-text-centered mb-4">Why have Multi-Critic?</h3>
       <div class="has-text-centered">
-        <img src="./static/images/all_gait_rmse_comparison.png" alt="Multi-Critic Variants RMSE Comparison" style="width: 90%; max-width: 1000px; border-radius: 8px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
+        <img loading="lazy" decoding="async" width="1470" height="685" src="./static/images/all_gait_rmse_comparison.png" alt="Multi-Critic Variants RMSE Comparison" style="width: 90%; max-width: 1000px; border-radius: 8px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
       </div>
       <p class="has-text-justified mt-4" style="color: #555; font-size: 0.9rem; padding: 0 2rem;">
         APEX's multi-critic variants sustain high tracking accuracy across all metrics and reward magnitudes, whereas single-critic variants degrade under strong velocity rewards. This demonstrates the robustness of the multi-critic learning approach in maintaining imitation quality while optimizing for task performance.
@@ -488,7 +489,7 @@
           <div class="item item-pace">
             <div class="box" style="background-color: #ffffff; box-shadow: 0 2px 8px rgba(33,163,102,0.15);">
               <h4 class="title is-5 has-text-centered mb-3">Pace</h4>
-              <video poster="" id="pace" autoplay controls muted loop playsinline preload="auto" style="width: 100%; border-radius: 8px;">
+              <video data-autoplay preload="none" loading="lazy" width="1920" height="1080" poster="./static/images/video-posters/pace_apex.webp" id="pace" controls muted loop playsinline style="width: 100%; border-radius: 8px;">
                 <source src="./static/videos/pace_apex.mp4" type="video/mp4">
               </video>
             </div>
@@ -498,7 +499,7 @@
           <div class="item item-trot">
             <div class="box" style="background-color: #ffffff; box-shadow: 0 2px 8px rgba(33,163,102,0.15);">
               <h4 class="title is-5 has-text-centered mb-3">Trot</h4>
-              <video poster="" id="trot" autoplay controls muted loop playsinline preload="metadata" style="width: 100%; border-radius: 8px;">
+              <video data-autoplay preload="none" loading="lazy" width="1920" height="1080" poster="./static/images/video-posters/trot_apex.webp" id="trot" controls muted loop playsinline style="width: 100%; border-radius: 8px;">
                 <source src="./static/videos/trot_apex.mp4" type="video/mp4">
               </video>
             </div>
@@ -508,7 +509,7 @@
           <div class="item item-canter">
             <div class="box" style="background-color: #ffffff; box-shadow: 0 2px 8px rgba(33,163,102,0.15);">
               <h4 class="title is-5 has-text-centered mb-3">Canter</h4>
-              <video poster="" id="canter" autoplay controls muted loop playsinline preload="metadata" style="width: 100%; border-radius: 8px;">
+              <video data-autoplay preload="none" loading="lazy" width="1920" height="1080" poster="./static/images/video-posters/apex_canter_atheltics_ground.webp" id="canter" controls muted loop playsinline style="width: 100%; border-radius: 8px;">
                 <source src="./static/videos/apex_canter_atheltics_ground.mp4" type="video/mp4">
               </video>
             </div>
@@ -518,7 +519,7 @@
           <div class="item item-pronk">
             <div class="box" style="background-color: #ffffff; box-shadow: 0 2px 8px rgba(33,163,102,0.15);">
               <h4 class="title is-5 has-text-centered mb-3">Pronk</h4>
-              <video poster="" id="pronk" autoplay controls muted loop playsinline preload="metadata" style="width: 100%; border-radius: 8px;">
+              <video data-autoplay preload="none" loading="lazy" width="1920" height="1080" poster="./static/images/video-posters/pronk_apex.webp" id="pronk" controls muted loop playsinline style="width: 100%; border-radius: 8px;">
                 <source src="./static/videos/pronk_apex.mp4" type="video/mp4">
               </video>
             </div>
@@ -527,7 +528,7 @@
           <div class="item item-pronk">
             <div class="box" style="background-color: #ffffff; box-shadow: 0 2px 8px rgba(33,163,102,0.15);">
               <h4 class="title is-5 has-text-centered mb-3">Hopturn</h4>
-              <video poster="" id="hopturn" autoplay controls muted loop playsinline preload="metadata" style="width: 100%; border-radius: 8px;">
+              <video data-autoplay preload="none" loading="lazy" width="1056" height="598" poster="./static/images/video-posters/hopturn_apex.webp" id="hopturn" controls muted loop playsinline style="width: 100%; border-radius: 8px;">
                 <source src="./static/videos/hopturn_apex.mp4" type="video/mp4">
               </video>
             </div>
@@ -545,7 +546,7 @@
     
     <div class="box" style="background-color: #ffffff;">
       <div class="has-text-centered mb-5">
-        <img src="./static/images/APEX_flowchart.png" alt="APEX Method Overview" style="width: 100%; max-width: 900px; border-radius: 8px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
+        <img loading="lazy" decoding="async" width="1792" height="690" src="./static/images/APEX_flowchart.png" alt="APEX Method Overview" style="width: 100%; max-width: 900px; border-radius: 8px; box-shadow: 0 2px 12px rgba(33,163,102,0.15);">
         <p class="is-size-6 mt-3" style="color: #555; font-style: italic;">
           Overview of APEX. Only components along dashed lines are required during deployment.
         </p>
@@ -599,14 +600,14 @@
 <section class="section" id="BibTeX">
   <div class="container is-max-desktop content">
     <h2 class="title">BibTeX</h2>
-    <pre><code>@misc{sood2025apexactionpriorsenable,
-      title={APEX: Action Priors Enable Efficient Exploration for Robust Motion Tracking on Legged Robots}, 
+    <pre><code>@misc{sood2026apexactionpriorsenable,
+      title={APEX: Action Priors Enable Efficient Exploration for Robust Motion Tracking on Legged Robots},
       author={Shivam Sood and Laukik Nakhwa and Sun Ge and Yuhong Cao and Jin Cheng and Fatemah Zargarbashi and Taerim Yoon and Sungjoon Choi and Stelian Coros and Guillaume Sartoretti},
-      year={2025},
+      year={2026},
       eprint={2505.10022},
       archivePrefix={arXiv},
       primaryClass={cs.RO},
-      url={https://arxiv.org/abs/2505.10022}, 
+      url={https://arxiv.org/abs/2505.10022},
 }</code></pre>
   </div>
 </section>

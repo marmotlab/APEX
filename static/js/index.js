@@ -1,78 +1,79 @@
-window.HELP_IMPROVE_VIDEOJS = false;
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.navbar-burger').forEach(burger => {
+    burger.addEventListener('click', () => {
+      const menu = burger.closest('.navbar').querySelector('.navbar-menu');
+      const expanded = burger.classList.toggle('is-active');
+      burger.setAttribute('aria-expanded', String(expanded));
+      menu.classList.toggle('is-active', expanded);
+    });
+  });
 
-var INTERP_BASE = "./static/interpolation/stacked";
-var NUM_INTERP_FRAMES = 240;
-
-var interp_images = [];
-function preloadInterpolationImages() {
-  for (var i = 0; i < NUM_INTERP_FRAMES; i++) {
-    var path = INTERP_BASE + '/' + String(i).padStart(6, '0') + '.jpg';
-    interp_images[i] = new Image();
-    interp_images[i].src = path;
+  if (window.bulmaCarousel) {
+    bulmaCarousel.attach('.carousel', {
+      slidesToScroll: 1,
+      slidesToShow: 3,
+      loop: true,
+      infinite: false,
+      autoplay: false
+    });
   }
-}
 
-function setInterpolationImage(i) {
-  var image = interp_images[i];
-  image.ondragstart = function() { return false; };
-  image.oncontextmenu = function() { return false; };
-  $('#interpolation-image-wrapper').empty().append(image);
-}
+  // Keep native controls usable if IntersectionObserver is unavailable.
+  if (!('IntersectionObserver' in window)) return;
 
+  const videos = document.querySelectorAll('video[data-autoplay]');
+  const visibleVideos = new Set();
+  const pausedByPage = new WeakSet();
+  const pausedByUser = new WeakSet();
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const connection = navigator.connection;
+  const canAutoplay = () => !reducedMotion.matches && !connection?.saveData;
 
-$(document).ready(function() {
-    // Check for click events on the navbar burger icon
-    $(".navbar-burger").click(function() {
-      // Toggle the "is-active" class on both the "navbar-burger" and the "navbar-menu"
-      $(".navbar-burger").toggleClass("is-active");
-      $(".navbar-menu").toggleClass("is-active");
+  function pauseVideo(video) {
+    if (!video.paused) {
+      pausedByPage.add(video);
+      video.pause();
+    }
+  }
 
+  function playVideo(video) {
+    if (document.hidden || !canAutoplay() || pausedByUser.has(video)) return;
+    // Autoplay can be refused by the browser; the poster and controls remain.
+    video.play().catch(() => {});
+  }
+
+  videos.forEach(video => {
+    video.addEventListener('pause', () => {
+      if (!pausedByPage.delete(video) && !video.ended) pausedByUser.add(video);
     });
+    video.addEventListener('play', () => pausedByUser.delete(video));
+  });
 
-    var options = {
-			slidesToScroll: 1,
-			slidesToShow: 3,
-			loop: true,
-			infinite: true,
-			autoplay: false,
-			autoplaySpeed: 3000,
-    }
-
-		// Initialize all div with carousel class
-    var carousels = bulmaCarousel.attach('.carousel', options);
-
-    // Loop on each carousel initialized
-    for(var i = 0; i < carousels.length; i++) {
-    	// Add listener to  event
-    	carousels[i].on('before:show', state => {
-    		console.log(state);
-    	});
-    }
-
-    // Access to bulmaCarousel instance of an element
-    var element = document.querySelector('#my-element');
-    if (element && element.bulmaCarousel) {
-    	// bulmaCarousel instance is available as element.bulmaCarousel
-    	element.bulmaCarousel.on('before-show', function(state) {
-    		console.log(state);
-    	});
-    }
-
-    /*var player = document.getElementById('interpolation-video');
-    player.addEventListener('loadedmetadata', function() {
-      $('#interpolation-slider').on('input', function(event) {
-        console.log(this.value, player.duration);
-        player.currentTime = player.duration / 100 * this.value;
-      })
-    }, false);*/
-    preloadInterpolationImages();
-
-    $('#interpolation-slider').on('input', function(event) {
-      setInterpolationImage(this.value);
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(({ target: video, isIntersecting, intersectionRatio }) => {
+      if (isIntersecting && intersectionRatio >= 0.1) {
+        visibleVideos.add(video);
+        playVideo(video);
+      } else {
+        visibleVideos.delete(video);
+        pauseVideo(video);
+      }
     });
-    setInterpolationImage(0);
-    $('#interpolation-slider').prop('max', NUM_INTERP_FRAMES - 1);
+  }, { threshold: [0, 0.1] });
 
-    bulmaSlider.attach();
+  videos.forEach(video => observer.observe(video));
 
-})
+  function updatePlayback() {
+    videos.forEach(video => {
+      if (document.hidden || !canAutoplay() || !visibleVideos.has(video)) {
+        pauseVideo(video);
+      } else {
+        playVideo(video);
+      }
+    });
+  }
+
+  document.addEventListener('visibilitychange', updatePlayback);
+  reducedMotion.addEventListener('change', updatePlayback);
+  connection?.addEventListener('change', updatePlayback);
+});
