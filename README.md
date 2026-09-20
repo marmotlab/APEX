@@ -1,13 +1,14 @@
 <h1 align="center"> APEX: Action Priors Enable Efficient Exploration for Robust Motion Tracking on Legged Robots
  </h1>
 
+<h3 align="center">IROS 2026</h3>
+
 <div align="center">
 
-[[Website]](https://marmotlab.github.io/APEX/)
 <!-- [[Video]](https://www.youtube.com/watch?v=f6GKpPCyOGY) -->
 
 
-[![IsaacGym](https://img.shields.io/badge/IsaacGym-Preview4-b.svg)](https://developer.nvidia.com/isaac-gym) [![Linux platform](https://img.shields.io/badge/Platform-linux--64-orange.svg)](https://ubuntu.com/blog/tag/22-04-lts) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)]()
+[![Project Page](https://img.shields.io/badge/Project%20Page-APEX-blue)](https://marmotlab.github.io/APEX/) [![IsaacGym](https://img.shields.io/badge/IsaacGym-Preview4-b.svg)](https://developer.nvidia.com/isaac-gym) [![Linux platform](https://img.shields.io/badge/Platform-linux--64-orange.svg)](https://ubuntu.com/blog/tag/22-04-lts) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)]()
 
 
 <img src="assets/APEX_main.gif" width="90%"/>
@@ -19,7 +20,7 @@
 - [x] Release training code
 - [x] Release sim2sim code
 - [x] Release sim2real code
-- [ ] Release Isaac Lab version 
+- [x] Release [Isaac Lab version](https://github.com/shivam-sood00/Gurukul)
 ### Installation
 
 Follow these steps to set up the [legged_gym](https://github.com/leggedrobotics/legged_gym) environment:
